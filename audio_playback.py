@@ -1,6 +1,8 @@
 import pygame
 from pydub import AudioSegment
 import numpy as np
+from typing import Tuple
+from collections import deque
 
 
 
@@ -15,10 +17,15 @@ class AudioPlayerStream:
         self.current_position = 0
         self.audio_segment = None
 
-        # Stream settings (for future live input support)
+        # Audio Settings
         self.sample_rate = sample_rate
         self.chunk_size = chunk_size
         self.stream = None
+
+        #Storing audio info
+        AudioWindow = Tuple[float, np.ndarray]
+        self.window_duration_ms= int(self.chunk_size * 1000 / self.sample_rate)
+        self.audio_windows = deque(maxlen=10)
 
     # --- Playback Methods ---
     def load_audio(self, file_path):
@@ -46,24 +53,37 @@ class AudioPlayerStream:
         pygame.mixer.music.stop()
         self.current_position = 0
 
+    def update_audio_window(self):
+        """Update the audio windows deque with the latest window, like in get_current_window.
+        Add it with the timestamp."""
+        num_samples = int((self.window_duration_ms / 1000) * self.audio_segment.frame_rate)
 
-    def get_current_window(self, duration_ms=33):
-        """Return the current audio window (last `duration_ms` ms) as a NumPy array."""
         if self.audio_segment is None:
-            return np.zeros(duration_ms)
-
-        current_time_ms = pygame.mixer.music.get_pos()
+            return
+        
+        current_time_ms = pygame.mixer.music.get_pos() #stopped
         if current_time_ms == -1:
-            return np.zeros(duration_ms)
+            return
 
-        start = max(current_time_ms - duration_ms, 0)
+        start = max(current_time_ms - self.window_duration_ms, 0)
         window = self.audio_segment[start:current_time_ms]
         samples = np.array(window.get_array_of_samples())
 
         if window.channels == 2:
             samples = samples.reshape((-1, 2)).mean(axis=1)  # Convert to mono
 
-        return samples
+        self.audio_windows.append((current_time_ms / 1000.0, samples))
+
+
+    def get_latest_window(self):
+        """Return the current audio windowas a NumPy array."""
+
+        if self.audio_windows:
+            return self.audio_windows[-1] 
+        else:
+            num_samples = int((self.window_duration_ms / 1000) * self.audio_segment.frame_rate)
+            return (0.0, np.zeros(num_samples))
+
 
     # --- Stream Methods (for future use with live audio) ---
     # def start_stream(self):

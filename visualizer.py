@@ -57,9 +57,9 @@ class AudioVisualizerApp:
         if self.PlaybackState == PlaybackState.STOPPED: #start playing
             self.play_button.config(text="Pause")
             self.stop_button.config(state=tk.NORMAL)
-            self.start_visualizer_loop()
             self.audio_player.start_playing()
             self.PlaybackState = PlaybackState.PLAYING
+            self.start_visualizer_loop()
 
         elif self.PlaybackState == PlaybackState.PAUSED:
             self.play_button.config(text="Play")
@@ -75,7 +75,6 @@ class AudioVisualizerApp:
             self.PlaybackState = PlaybackState.PAUSED
 
         
-
 
     def stop_audio(self):
         """Stop the audio and reset the position."""
@@ -98,7 +97,8 @@ class AudioVisualizerApp:
         self.canvas.delete("all")  # Clear previous frame
 
         # Get audio samples
-        samples = self.audio_player.get_current_window(duration_ms=33)
+        self.audio_player.update_audio_window()
+        samples = self.audio_player.get_latest_window()[1]
 
         # Normalize samples to fit the canvas height
         if len(samples) > 0:
@@ -123,9 +123,7 @@ class AudioVisualizerApp:
                 self.canvas.create_line(x1, y1, x2, y2, fill='cyan')
         
 
-
-
-        self.root.after(33, self.update_visualizer)  # ~30 FPS
+        self.root.after(23, self.update_visualizer)  # ~30 FPS
 
 
 # Run the app
