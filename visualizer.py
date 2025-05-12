@@ -1,7 +1,6 @@
 import tkinter as tk
 from tkinter import filedialog
 from audio_playback import AudioPlayerStream 
-from audio_analysis import AudioAnalyzer
 import numpy as np
 
 from enum import Enum
@@ -19,8 +18,11 @@ class AudioVisualizerApp:
         self.PlaybackState = PlaybackState.STOPPED
         self.visualizer_running = False
 
+        #Settings
+        self.seconds_on_screen = 10
+        self.canvas_width = 580
+
         self.audio_player = AudioPlayerStream()
-        self.audio_analyzer = AudioAnalyzer()
         self.create_widgets()
 
         
@@ -37,23 +39,23 @@ class AudioVisualizerApp:
         self.stop_button.pack(pady=10)
 
         # --- Waveform Canvas (blank for now) ---
-        self.main_visualizer_canvas = tk.Canvas(self.root, width=580, height=200, bg="black")
+        self.main_visualizer_canvas = tk.Canvas(self.root, width=self.canvas_width, height=300, bg="black")
         self.main_visualizer_canvas.pack(pady=20)
     
         # --- Additional Visualizer Canvases ---
         self.highs_label = tk.Label(self.root, text="Highs", bg="black", fg="white")
         self.highs_label.pack(pady=(30, 0))
-        self.highs_visualizer_canvas = tk.Canvas(self.root, width=580, height=100, bg="black")
+        self.highs_visualizer_canvas = tk.Canvas(self.root, width=self.canvas_width, height=200, bg="black")
         self.highs_visualizer_canvas.pack(pady=(0, 20))
 
         self.mids_label = tk.Label(self.root, text="Mids", bg="black", fg="white")
         self.mids_label.pack(pady=(0, 0))
-        self.mids_visualizer_canvas = tk.Canvas(self.root, width=580, height=100, bg="black")
+        self.mids_visualizer_canvas = tk.Canvas(self.root, width=self.canvas_width, height=200, bg="black")
         self.mids_visualizer_canvas.pack(pady=(0, 20))
 
         self.lows_label = tk.Label(self.root, text="Lows", bg="black", fg="white")
         self.lows_label.pack(pady=(0, 0))
-        self.lows_visualizer_canvas = tk.Canvas(self.root, width=580, height=100, bg="black")
+        self.lows_visualizer_canvas = tk.Canvas(self.root, width=self.canvas_width, height=200, bg="black")
         self.lows_visualizer_canvas.pack(pady=(0, 20))
 
 
@@ -116,56 +118,52 @@ class AudioVisualizerApp:
         self.main_visualizer_canvas.delete("all")  # Clear previous frame
 
         # Get audio samples
-        self.audio_player.update_audio_window()
-        samples = self.audio_player.get_latest_window()[1]
+        window_data = self.audio_player.get_latest_window()
 
-        if samples is None or len(samples) == 0:
+        if window_data is None or len(window_data) == 0:
             self.root.after(23, self.update_visualizer)  # ~30 FPS
             return
-        # Compute FFT and get frequency data
-        self.audio_analyzer.compute_fft(samples, self.audio_player.audio_segment.frame_rate)
+        
+        self.DrawWaveform(self.main_visualizer_canvas, window_data)
 
-        self.DrawWaveform(self.main_visualizer_canvas, samples)
-        self.DrawSpectrum(self.highs_visualizer_canvas, self.audio_analyzer.highs_data[0], self.audio_analyzer.highs_data[1])
-        self.DrawSpectrum(self.mids_visualizer_canvas, self.audio_analyzer.mids_data[0], self.audio_analyzer.mids_data[1])
-        self.DrawSpectrum(self.lows_visualizer_canvas, self.audio_analyzer.lows_data[0], self.audio_analyzer.lows_data[1])
-
-        self.root.after(23, self.update_visualizer)  # ~30 FPS
+        self.root.after(40, self.update_visualizer)  # ~30 FPS
 
 
-    def DrawWaveform(self, canvas, samples):
+    def DrawWaveform(cself,canvas, window_data):
         canvas.delete("all")  # Clear previous frame
-        # Normalize samples to fit the canvas height
+
+        # Get canvas dimensions
         width = int(canvas['width'])
         height = int(canvas['height'])
-        mid_y = height // 2
+        padding = 10
 
-        # Downsample to match canvas width
-        step = max(1, len(samples) // width)
-        samples = samples[::step]
+        graph_width = width - 2 * padding
+        graph_height = height - 2 * padding
+        num_bars = len(window_data)
+        bar_width = graph_width / num_bars if num_bars > 0 else 1
 
-        # Normalize to [-1, 1]
-        max_amplitude = np.max(np.abs(samples)) or 1
-        normalized = samples / max_amplitude
+        # Scale data to fit canvas height
+        max_val = max(abs(min(window_data)), max(window_data)) or 1
+        center_y = height // 2
 
-        # Draw waveform as connected lines
-        for i in range(1, len(normalized)):
-            x1 = i - 1
-            y1 = mid_y - int(normalized[i - 1] * (height // 2))
-            x2 = i
-            y2 = mid_y - int(normalized[i] * (height // 2))
-            self.main_visualizer_canvas.create_line(x1, y1, x2, y2, fill='cyan')
-    
+        for i, value in enumerate(window_data):
+            scaled_height = int((value / max_val) * (graph_height / 2))
+            x = padding + i * bar_width
+            canvas.create_line(
+                x, center_y,
+                x, center_y - scaled_height,
+                fill="cyan"
+            )
 
 
-    def DrawSpectrum(self, canvas, freqs, magnitudes):
+    def DrawSpectrum(self, canvas, magnitudes):
         canvas.delete("all") 
         width = int(canvas['width'])
         height = int(canvas['height'])
 
         # Normalize magnitudes
         max_magnitude = np.max(magnitudes) or 1
-        magnitudes = magnitudes / max_magnitude
+        magnitudes = magnitudes / (max_magnitude * 1.5)
 
         # Map magnitudes to canvas width
         num_bins = len(magnitudes)
