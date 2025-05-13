@@ -124,12 +124,26 @@ class AudioVisualizerApp:
             self.root.after(23, self.update_visualizer)  # ~30 FPS
             return
         
-        self.DrawWaveform(self.main_visualizer_canvas, window_data)
+        self.DrawBars(self.main_visualizer_canvas, window_data)
+        self.DrawCanvasDetails(self.main_visualizer_canvas)
 
         self.root.after(40, self.update_visualizer)  # ~30 FPS
 
+    def DrawCanvasDetails(self,canvas):
+        # Draw a white vertical line through the middle of the canvas
+        width = int(canvas['width'])
+        height = int(canvas['height'])
+        padding = 50
+        middle_x = width // 2
 
-    def DrawWaveform(cself,canvas, window_data):
+        canvas.create_line(
+            middle_x, padding,
+            middle_x, height - padding,
+            fill="white",
+            width=2
+        )
+
+    def DrawBars(cself,canvas, window_data):
         canvas.delete("all")  # Clear previous frame
 
         # Get canvas dimensions

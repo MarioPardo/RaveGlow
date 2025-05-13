@@ -4,7 +4,7 @@ import numpy as np
 from typing import Tuple
 from collections import deque
 
-
+from audio_analysis import AudioAnalyzer
 
 
 # Initialize Pygame mixer once
@@ -21,13 +21,21 @@ class AudioPlayerStream:
         self.sample_rate = 44100
         self.samples_per_ms = self.sample_rate / 1000.0
         self.chunk_size = 1024
-        self.barlength_ms = 50
+        self.barlength_ms = 15
 
         self.stream = None
 
         #Storing audio info
-        self.samples = []
-        self.downsampled_samples = []
+        self.raw_samples = []
+        self.downsampled_raw_samples = []
+
+        #Storing analyzed audio
+        self.freqs, self.audio_segment = None, None
+        self.raw_lows_samples = []
+        self.raw_mids_samples = []
+        self.raw_highs_samples = []
+
+        self.audio_analyzer = AudioAnalyzer()
     
 
     # --- Playback Methods ---
@@ -37,8 +45,18 @@ class AudioPlayerStream:
         pygame.mixer.music.load(file_path)
         self.audio_segment = AudioSegment.from_file(file_path)
 
-        self.extract_waveform_data()
+        self.PerformAnalysis()
+
+    def PerformAnalysis(self):
+        """Perform analysis on the loaded audio file."""
+        self.raw_samples = self.extract_waveform_data(self.audio_segment)
         self.def_addblank_startpadding(5)
+        
+        # Get FFT data
+        freqs, magnitudes = self.audio_analyzer.FFT(self.raw_samples, self.sample_rate)
+        self.raw_lows_samples, self.raw_mids_samples, self.raw_highs_samples = self.audio_analyzer.Get_FFT_HighsMidsLows(freqs, magnitudes)
+
+
         self.downsample_data(self.barlength_ms)
 
 
@@ -61,37 +79,41 @@ class AudioPlayerStream:
         pygame.mixer.music.stop()
         self.current_position = 0
 
-    def extract_waveform_data(self):
+    def extract_waveform_data(self,audio_segment):
         """Extract waveform data from the loaded audio file."""
-        if self.audio_segment is None:
+        if audio_segment is None:
             raise ValueError("No audio file loaded.")
-        self.samples = np.array(self.audio_segment.get_array_of_samples())
-        if self.audio_segment.channels == 2:
-            self.samples = self.samples.reshape((-1, 2)).mean(axis=1)     
+        
+        samples = np.array(audio_segment.get_array_of_samples())
+        if audio_segment.channels == 2:
+            samples = samples.reshape((-1, 2)).mean(axis=1)     
+        
+        return samples
 
-    def downsample_data(self,barlength_ms=50):
+    #TODO move to audio analysis
+    def downsample_data(self,barlength_ms):
         """Downsample the waveform data for visualization."""
         self.barlength_ms = barlength_ms
         samples_per_bar = int(self.sample_rate * (barlength_ms / 1000.0))
-        num_bars = len(self.samples) // samples_per_bar
+        num_bars = len(self.raw_samples) // samples_per_bar
 
         for i in range(num_bars):
             start = i * samples_per_bar
             end = start + samples_per_bar
-            bar = self.samples[start:end]
+            bar = self.raw_samples[start:end]
 
             #how we determine bar, mean for now
             downsampled_sample = np.mean(bar)
-            self.downsampled_samples.append(downsampled_sample)
+            self.downsampled_raw_samples.append(downsampled_sample)
 
-    
+    #TODO move to audio analysis
     def get_downsampled_audio_window(self, start_ms, end_ms):
         """Get a window of downsampled audio data between start and end times."""
         
         start_index = int(start_ms // self.barlength_ms)
         end_ms_index = int(end_ms // self.barlength_ms)
 
-        return self.downsampled_samples[start_index:end_ms_index]
+        return self.downsampled_raw_samples[start_index:end_ms_index]
 
 
     def get_latest_window(self, windowduration_s=10):
@@ -116,33 +138,6 @@ class AudioPlayerStream:
         """Add blank padding to the start of the audio data."""
         num_samples = int(seconds * self.sample_rate)
         blank_padding = np.zeros(num_samples)
-        self.samples = np.concatenate((blank_padding, self.samples))
+        self.raw_samples = np.concatenate((blank_padding, self.raw_samples))
     
 
-
-    # --- Stream Methods (for future use with live audio) ---
-    # def start_stream(self):
-    #     """Start audio capture stream (for live audio processing)."""
-    #     import pyaudio
-    #     self.stream = pyaudio.PyAudio().open(
-    #         format=pyaudio.paInt16,
-    #         channels=1,
-    #         rate=self.sample_rate,
-    #         input=True,
-    #         frames_per_buffer=self.chunk_size
-    #     )
-    #     self.is_playing = True
-
-    # def stop_stream(self):
-    #     """Stop and close the audio stream."""
-    #     if self.stream:
-    #         self.stream.stop_stream()
-    #         self.stream.close()
-    #         self.is_playing = False
-
-    # def get_audio_data(self):
-    #     """Capture a chunk of audio data from the stream."""
-    #     if self.is_playing:
-    #         data = self.stream.read(self.chunk_size)
-    #         return np.frombuffer(data, dtype=np.int16)
-    #     return None
