@@ -119,7 +119,7 @@ class AudioPlayerStream:
 
         return downsampled_window
 
-    def get_latest_window2(self, samples, sample_rate):
+    def get_latest_window(self, samples, sample_rate):
         """Get the latest window of raw audio samples (in sync with music playback)."""
         if self.current_file is None:
             return None
