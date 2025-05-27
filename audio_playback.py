@@ -50,14 +50,14 @@ class AudioPlayerStream:
     def PerformAnalysis(self):
         """Perform analysis on the loaded audio file."""
         self.raw_samples = self.extract_waveform_data(self.audio_segment)
-        self.def_addblank_startpadding(5)
+        self.raw_samples = self.def_addblank_startpadding(self.raw_samples, self.sample_rate, 5)  # Add 1 second of padding at the start
         
         # Get FFT data
         freqs, magnitudes = self.audio_analyzer.FFT(self.raw_samples, self.sample_rate)
         self.raw_lows_samples, self.raw_mids_samples, self.raw_highs_samples = self.audio_analyzer.Get_FFT_HighsMidsLows(freqs, magnitudes)
 
-
-        self.downsample_data(self.barlength_ms)
+        #Downsampling for visualization
+        self.downsampled_raw_samples = self.audio_analyzer.downsample_data(self.raw_samples, self.sample_rate, self.barlength_ms)
 
 
     def start_playing(self):
@@ -89,34 +89,19 @@ class AudioPlayerStream:
             samples = samples.reshape((-1, 2)).mean(axis=1)     
         
         return samples
+    
 
-    #TODO move to audio analysis
-    def downsample_data(self,barlength_ms):
-        """Downsample the waveform data for visualization."""
-        self.barlength_ms = barlength_ms
-        samples_per_bar = int(self.sample_rate * (barlength_ms / 1000.0))
-        num_bars = len(self.raw_samples) // samples_per_bar
-
-        for i in range(num_bars):
-            start = i * samples_per_bar
-            end = start + samples_per_bar
-            bar = self.raw_samples[start:end]
-
-            #how we determine bar, mean for now
-            downsampled_sample = np.mean(bar)
-            self.downsampled_raw_samples.append(downsampled_sample)
-
-    #TODO move to audio analysis
-    def get_downsampled_audio_window(self, start_ms, end_ms):
+        
+    def get_downsampled_audio_window(self,datasource, barlength_ms, start_ms, end_ms):
         """Get a window of downsampled audio data between start and end times."""
         
-        start_index = int(start_ms // self.barlength_ms)
-        end_ms_index = int(end_ms // self.barlength_ms)
+        start_index = int(start_ms // barlength_ms)
+        end_ms_index = int(end_ms // barlength_ms)
 
-        return self.downsampled_raw_samples[start_index:end_ms_index]
+        return datasource[start_index:end_ms_index]
 
 
-    def get_latest_window(self, windowduration_s=10):
+    def get_latest_downsampled_window(self, datasource, windowduration_s=10):
         """Get the latest window of audio data."""
         if self.current_file is None:
             return None
@@ -127,17 +112,44 @@ class AudioPlayerStream:
         end_time = start_time + windowduration_s * 1000.0
 
         # Get the downsampled audio window
-        downsampled_window = self.get_downsampled_audio_window(start_time, end_time)
+        downsampled_window = self.get_downsampled_audio_window(datasource, self.barlength_ms, start_time, end_time)
 
         # Update the current position
         self.current_position = pygame.mixer.music.get_pos() / 1000.0
 
         return downsampled_window
 
-    def def_addblank_startpadding(self,seconds):
+    def get_latest_window2(self, samples, sample_rate):
+        """Get the latest window of raw audio samples (in sync with music playback)."""
+        if self.current_file is None:
+            return None
+
+        windowduration_s = 10  # how many seconds of audio to grab
+
+        # Get current position from pygame in seconds
+        self.current_position = pygame.mixer.music.get_pos() / 1000.0
+        
+        # Compute sample indices
+        start_sample = int(self.current_position * sample_rate)
+        end_sample = int((self.current_position + windowduration_s) * sample_rate)
+
+        # Clip to available range
+        if end_sample > len(samples):
+            end_sample = len(samples)
+        if start_sample >= end_sample:
+            return np.zeros(windowduration_s * sample_rate)  # silence fallback
+
+        # Slice the sample array
+        window = samples[start_sample:end_sample]
+
+        return window
+
+
+    def def_addblank_startpadding(self,data, samplerate, seconds):
         """Add blank padding to the start of the audio data."""
-        num_samples = int(seconds * self.sample_rate)
+        num_samples = int(seconds * samplerate)
         blank_padding = np.zeros(num_samples)
-        self.raw_samples = np.concatenate((blank_padding, self.raw_samples))
+        data = np.concatenate((blank_padding, data))
+        return data
     
 

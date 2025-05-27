@@ -118,7 +118,7 @@ class AudioVisualizerApp:
         self.main_visualizer_canvas.delete("all")  # Clear previous frame
 
         # Get audio samples
-        window_data = self.audio_player.get_latest_window()
+        window_data = self.audio_player.get_latest_downsampled_window(self.audio_player.downsampled_raw_samples)
 
         if window_data is None or len(window_data) == 0:
             self.root.after(23, self.update_visualizer)  # ~30 FPS

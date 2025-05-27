@@ -11,6 +11,25 @@ class AudioAnalyzer:
     def __init__(self):
         pass
    
+    
+    def downsample_data(self,data, samplerate, barlength_ms):
+        """Downsample the waveform data for visualization."""
+        self.barlength_ms = barlength_ms
+        samples_per_bar = int(samplerate * (barlength_ms / 1000.0))
+        num_bars = len(data) // samples_per_bar
+
+        downsampled_data = []
+        for i in range(num_bars):
+            start = i * samples_per_bar
+            end = start + samples_per_bar
+            bar = data[start:end]
+
+            #how we determine bar, mean for now
+            downsampled_sample = np.mean(bar)
+            downsampled_data.append(downsampled_sample)
+
+        return downsampled_data
+
 
     def FFT(self, samples, sample_rate):
         """Perform Fast Fourier Transform on the audio samples."""
