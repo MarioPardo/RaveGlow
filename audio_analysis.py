@@ -24,7 +24,7 @@ class AudioAnalyzer:
             bar = data[start:end]
 
             #how we determine bar, mean for now
-            downsampled_sample = np.mean(bar)
+            downsampled_sample = np.median(bar)
             downsampled_data.append(downsampled_sample)
 
         return downsampled_data
@@ -42,6 +42,11 @@ class AudioAnalyzer:
             chunks.append(chunk)
 
         return chunks
+    
+    
+
+
+
 
 
     def FFT(self, samples, sample_rate):
@@ -54,6 +59,7 @@ class AudioAnalyzer:
         freqs = np.fft.fftfreq(len(samples), d=1/sample_rate)
         return freqs, magnitudes
     
+
 
     def Get_FFT_HighsMidsLows(self, freqs, magnitudes, lowsbands = lows_bands, midsbands = mids_bands, highsbands = highs_bands):
         """Get the high, mid, and low frequency bands."""

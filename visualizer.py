@@ -121,10 +121,15 @@ class AudioVisualizerApp:
         raw_window_data = self.audio_player.get_latest_window(self.audio_player.raw_samples,self.audio_player.sample_rate)
         chunked_data = self.audio_player.audio_analyzer.split_into_ms_chunks(raw_window_data, self.audio_player.sample_rate, self.audio_player.barlength_ms)
 
-        fft_per_chunk = []
+        lows = []
+        mids = []
+        highs = []
         for chunk in chunked_data:
             fft_data = self.audio_player.audio_analyzer.get_fft_band_energies(chunk, self.audio_player.sample_rate)
-            fft_per_chunk.append(fft_data)
+            lows.append(fft_data[0])
+            mids.append(fft_data[1])
+            highs.append(fft_data[2])
+
 
         window_data = self.audio_player.audio_analyzer.downsample_data(raw_window_data, self.audio_player.sample_rate, self.audio_player.barlength_ms)
     
@@ -137,13 +142,13 @@ class AudioVisualizerApp:
         self.DrawCanvasDetails(self.main_visualizer_canvas)
 
         # Draw highs, mids, and lows
-        self.DrawBars(self.highs_visualizer_canvas, [fft[2] for fft in fft_per_chunk])  # Highs
+        self.DrawBars(self.highs_visualizer_canvas, highs)  # Highs
         self.DrawCanvasDetails(self.highs_visualizer_canvas)
 
-        self.DrawBars(self.mids_visualizer_canvas, [fft[1] for fft in fft_per_chunk])  # Mids
+        self.DrawBars(self.mids_visualizer_canvas, mids)  # Mids
         self.DrawCanvasDetails(self.mids_visualizer_canvas)
 
-        self.DrawBars(self.lows_visualizer_canvas, [fft[0] for fft in fft_per_chunk])  # Lows
+        self.DrawBars(self.lows_visualizer_canvas, lows)  # Lows
         self.DrawCanvasDetails(self.lows_visualizer_canvas)
 
 
