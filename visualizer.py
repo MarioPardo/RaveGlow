@@ -39,24 +39,27 @@ class AudioVisualizerApp:
         self.stop_button.pack(pady=10)
 
         # --- Waveform Canvas (blank for now) ---
-        self.main_visualizer_canvas = tk.Canvas(self.root, width=self.canvas_width, height=300, bg="black")
-        self.main_visualizer_canvas.pack(pady=20)
-    
-        # --- Additional Visualizer Canvases ---
-        self.highs_label = tk.Label(self.root, text="Highs", bg="black", fg="white")
-        self.highs_label.pack(pady=(30, 0))
-        self.highs_visualizer_canvas = tk.Canvas(self.root, width=self.canvas_width, height=200, bg="black")
-        self.highs_visualizer_canvas.pack(pady=(0, 20))
+        
+        num_bins_per_freqtype = 10
+        max_height_bars = 15
 
-        self.mids_label = tk.Label(self.root, text="Mids", bg="black", fg="white")
-        self.mids_label.pack(pady=(0, 0))
-        self.mids_visualizer_canvas = tk.Canvas(self.root, width=self.canvas_width, height=200, bg="black")
-        self.mids_visualizer_canvas.pack(pady=(0, 20))
+        bin_width = 50
+        bin_height = 20
 
-        self.lows_label = tk.Label(self.root, text="Lows", bg="black", fg="white")
-        self.lows_label.pack(pady=(0, 0))
-        self.lows_visualizer_canvas = tk.Canvas(self.root, width=self.canvas_width, height=200, bg="black")
-        self.lows_visualizer_canvas.pack(pady=(0, 20))
+        # Create a canvas for the grid
+        grid_canvas_width = num_bins_per_freqtype * bin_width
+        grid_canvas_height = max_height_bars * bin_height
+        self.grid_canvas = tk.Canvas(self.root, width=grid_canvas_width, height=grid_canvas_height, bg="gray")
+        self.grid_canvas.pack(pady=10)
+
+        # Draw the grid lines
+        for i in range(num_bins_per_freqtype + 1):  # Vertical lines
+            x = i * bin_width
+            self.grid_canvas.create_line(x, 0, x, grid_canvas_height, fill="white")
+
+        for j in range(max_height_bars + 1):  # Horizontal lines
+            y = j * bin_height
+            self.grid_canvas.create_line(0, y, grid_canvas_width, y, fill="white")
 
 
     def select_file(self):
