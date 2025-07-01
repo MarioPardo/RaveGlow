@@ -8,9 +8,43 @@ class AudioAnalyzer:
     mids_bands = (200, 2000)
     highs_bands = (4000, 20000)
 
-    def __init__(self):
+    
+
+    def __init__(self,numbands):
+        self.numbands = numbands
+        self.logarithmic_bands = self.calculate_logarithmic_bands(44100, numbands)
+
+        print("Frequency Bands")
+        print(self.logarithmic_bands)
         pass
    
+
+    def calculate_logarithmic_bands(self, sample_rate, num_bands=10):
+        """
+        Calculate logarithmic frequency bands based on the sample rate.
+
+        Args:
+            sample_rate (int): Sample rate of the audio in Hz.
+            num_bands (int): Number of logarithmic bands to create.
+
+        Returns:
+            list: List of tuples representing frequency ranges for each band.
+        """
+        min_freq = 20
+        max_freq = sample_rate / 2
+        band_width = (max_freq / min_freq) ** (1 / num_bands)
+        bands = []
+        prev_high_freq = min_freq
+        for i in range(num_bands):
+            low_freq = round(prev_high_freq)
+            high_freq = round(min_freq * (band_width ** (i + 1)))
+            bands.append((low_freq, high_freq))
+            prev_high_freq = high_freq
+
+        return bands
+
+
+        
     
     def downsample_data(self,data, samplerate, barlength_ms):
         """Downsample the waveform data for visualization."""
@@ -46,50 +80,20 @@ class AudioAnalyzer:
     
 
 
-
-
-
-    def FFT(self, samples, sample_rate):
-        """Perform Fast Fourier Transform on the audio samples."""
-        # Perform FFT
-        fft_result = np.fft.fft(samples)
-        # Get the magnitude
-        magnitudes = np.abs(fft_result)
-        # Get the frequency bins
-        freqs = np.fft.fftfreq(len(samples), d=1/sample_rate)
-        return freqs, magnitudes
-    
-
-
-    def Get_FFT_HighsMidsLows(self, freqs, magnitudes, lowsbands = lows_bands, midsbands = mids_bands, highsbands = highs_bands):
-        """Get the high, mid, and low frequency bands."""
-        # Get the indices for the frequency bands
-        low_indices = np.where((freqs >= lowsbands[0]) & (freqs <= lowsbands[1]))[0]
-        mid_indices = np.where((freqs >= midsbands[0]) & (freqs <= midsbands[1]))[0]
-        high_indices = np.where((freqs >= highsbands[0]) & (freqs <= highsbands[1]))[0]
-
-        # Calculate the average magnitude for each band
-        low_magnitudes = np.mean(magnitudes[low_indices])
-        mid_magnitudes= np.mean(magnitudes[mid_indices])
-        high_magnitudes = np.mean(magnitudes[high_indices])
-
-        return low_magnitudes, mid_magnitudes, high_magnitudes
-    
-
-    import numpy as np
-
     def get_fft_band_energies(self, samples, sample_rate):
         """
         Perform FFT on the input samples and return average magnitudes for
-        low, mid, and high frequency bands.
+        the specified frequency bands.
 
         Args:
             samples (np.ndarray): 1D array of audio samples.
             sample_rate (int): Sample rate of the audio in Hz.
+            bands (list of tuples): List of (low_freq, high_freq) tuples defining frequency bands.
 
         Returns:
-            tuple: (avg_low, avg_mid, avg_high) magnitudes
+            list: Average magnitudes for each frequency band.
         """
+        bands = self.logarithmic_bands
 
         # Perform FFT
         fft_result = np.fft.fft(samples)
@@ -101,21 +105,13 @@ class AudioAnalyzer:
         freqs = freqs[:half_n]
         magnitudes = magnitudes[:half_n]
 
-        # Define band ranges
-        lows_bands = (0, 180)
-        mids_bands = (200, 2000)
-        highs_bands = (4000, 20000)
+        # Compute average magnitudes for each band
+        band_energies = []
+        for low_freq, high_freq in bands:
+            band_mask = (freqs >= low_freq) & (freqs < high_freq)
+            avg_magnitude = np.mean(magnitudes[band_mask]) if np.any(band_mask) else 0
+            band_energies.append(avg_magnitude)
 
-        # Mask for each band
-        low_mask = (freqs >= lows_bands[0]) & (freqs < lows_bands[1])
-        mid_mask = (freqs >= mids_bands[0]) & (freqs < mids_bands[1])
-        high_mask = (freqs >= highs_bands[0]) & (freqs < highs_bands[1])
-
-        # Compute average magnitudes
-        avg_low = np.mean(magnitudes[low_mask]) if np.any(low_mask) else 0
-        avg_mid = np.mean(magnitudes[mid_mask]) if np.any(mid_mask) else 0
-        avg_high = np.mean(magnitudes[high_mask]) if np.any(high_mask) else 0
-
-        return avg_low, avg_mid, avg_high
+        return band_energies
 
 
