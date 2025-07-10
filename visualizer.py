@@ -27,7 +27,7 @@ class AudioVisualizerApp:
 
         #Configuratble Params 
         self.num_freq_bands = 10
-        self.max_height_bars = 15
+        self.max_height_bars = 10
 
         self.audio_player = AudioPlayerStream()
         self.audio_analyzer = AudioAnalyzer(numbands = self.num_freq_bands)
@@ -50,7 +50,7 @@ class AudioVisualizerApp:
         # Create a canvas for the grid
         grid_canvas_width = self.num_freq_bands * self.bin_width
         grid_canvas_height = self.max_height_bars * self.bin_height
-        self.grid_canvas = tk.Canvas(self.root, width=grid_canvas_width, height=grid_canvas_height, bg="gray")
+        self.grid_canvas = tk.Canvas(self.root, width=grid_canvas_width, height=grid_canvas_height, bg="black")
         self.grid_canvas.pack(pady=10)
 
         self.DrawVisualizer(None)
@@ -69,7 +69,9 @@ class AudioVisualizerApp:
                 x = i * self.bin_width
                 y = grid_canvas_height - (band_height * self.bin_height)
                 bar_height = band_height * self.bin_height
-                self.grid_canvas.create_rectangle(x, y, x + self.bin_width, grid_canvas_height, fill="green")
+                for j in range(band_height):
+                    color = self.findRectableColor((band_height-j), self.max_height_bars)
+                    self.grid_canvas.create_rectangle(x, y + j * self.bin_height, x + self.bin_width, y + (j + 1) * self.bin_height, fill=color)
         
 
         # Draw the grid lines
@@ -82,7 +84,15 @@ class AudioVisualizerApp:
             self.grid_canvas.create_line(0, y, grid_canvas_width, y, fill="white")
 
 
-
+    def findRectableColor(self, value, max_value):
+        if value >= 0.8 * max_value:
+            return "red"
+        elif value >= 0.7 * max_value:
+            return "orange"
+        elif value >= 0.4 * max_value:
+            return "yellow"
+        else:
+            return "green"
 
 
     def select_file(self):
@@ -136,9 +146,10 @@ class AudioVisualizerApp:
         self.visualizer_running = True
         self.update_visualizer()
 
-    def scale_to_bar_height_log(self,mag, max_mag=1e6, max_height=15):
+    def scale_to_bar_height_log(self,mag, max_mag=1e6):
         db = 20 * np.log10(mag + 1e-5)  # avoid log(0)
         db_max = 30 * np.log10(max_mag)
+        max_height = self.max_height_bars
         return max(0, min(max_height, int((db / db_max) * max_height)))
 
     def update_visualizer(self):
@@ -158,7 +169,6 @@ class AudioVisualizerApp:
         MAX_EXPECTED_MAX = 100000
         # Normalize the frequency bands to fit within the grid height
         normalized_bands = [self.scale_to_bar_height_log(band) for band in freq_bands]
-
 
 
         self.DrawVisualizer(normalized_bands)
