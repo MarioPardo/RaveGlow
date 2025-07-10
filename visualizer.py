@@ -146,11 +146,19 @@ class AudioVisualizerApp:
         self.visualizer_running = True
         self.update_visualizer()
 
-    def scale_to_bar_height_log(self,mag, max_mag=1e6):
-        db = 20 * np.log10(mag + 1e-5)  # avoid log(0)
-        db_max = 30 * np.log10(max_mag)
-        max_height = self.max_height_bars
-        return max(0, min(max_height, int((db / db_max) * max_height)))
+    def scale_bar_heights(self, mag):
+        
+        return [min(int(m), self.max_height_bars) for m in mag]
+
+    
+    def scale_with_exponent(self,magnitudes, max_boxes=10, exp=3.0):
+        experimental_max = 17 #TODO store in better place, bound to change
+        normalized = magnitudes / np.abs(experimental_max)
+        scaled = np.power(normalized, exp)
+        #scaled = [max(0, int(m) - 1) for m in scaled]
+        scaled = np.array(scaled)
+        return np.clip((scaled * max_boxes).astype(int), 0, max_boxes)    
+
 
     def update_visualizer(self):
         """Periodic update function called by Tkinter's main loop."""
@@ -166,9 +174,11 @@ class AudioVisualizerApp:
         
         # Analyze the audio data
         freq_bands = self.audio_analyzer.get_fft_band_energies(raw_window_data, self.audio_player.sample_rate)
-        MAX_EXPECTED_MAX = 100000
         # Normalize the frequency bands to fit within the grid height
-        normalized_bands = [self.scale_to_bar_height_log(band) for band in freq_bands]
+        normalized_bands = self.scale_with_exponent(freq_bands)
+        print("- - - ")
+        print(freq_bands)
+        print(normalized_bands)
 
 
         self.DrawVisualizer(normalized_bands)

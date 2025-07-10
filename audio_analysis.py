@@ -96,8 +96,10 @@ class AudioAnalyzer:
         bands = self.logarithmic_bands
 
         # Perform FFT
+        samples = samples * np.hanning(len(samples))  # Apply a Hanning window
         fft_result = np.fft.fft(samples)
         magnitudes = np.abs(fft_result)
+        magnitudes = np.log1p(magnitudes)
         freqs = np.fft.fftfreq(len(samples), d=1/sample_rate)
 
         # Use only the positive frequencies
