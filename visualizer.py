@@ -29,6 +29,10 @@ class AudioVisualizerApp:
         self.num_freq_bands = 10
         self.max_height_bars = 10
 
+        # Visualizer Processing Params
+        self.EMA_buffer =[0 for _ in range(self.num_freq_bands)]
+        self.EMA_alpha = 0.1  
+
         self.audio_player = AudioPlayerStream()
         self.audio_analyzer = AudioAnalyzer(numbands = self.num_freq_bands)
         self.create_widgets()
@@ -55,6 +59,17 @@ class AudioVisualizerApp:
 
         self.DrawVisualizer(None)
 
+        # --- Params for Visualizer ---
+
+        # --- EMA Alpha Slider ---
+        self.alpha_label = tk.Label(self.root, text="EMA Alpha:")
+        self.alpha_label.pack(pady=5)
+        self.alpha_slider = tk.Scale(self.root, from_=0, to=1, resolution=0.01, orient=tk.HORIZONTAL, command=lambda value: setattr(self, 'EMA_alpha', float(value)))
+        self.alpha_slider.set(self.EMA_alpha)  # Default value
+        self.alpha_slider.pack(pady=5)
+
+    def update_ema_alpha(self, value):
+        self.ema_alpha = float(value)
     
     def DrawVisualizer(self,bands=None):
         """Draw the visualizer grid on a canvas."""
@@ -151,11 +166,10 @@ class AudioVisualizerApp:
         return [min(int(m), self.max_height_bars) for m in mag]
 
     
-    def scale_with_exponent(self,magnitudes, max_boxes=10, exp=3.0):
-        experimental_max = 17 #TODO store in better place, bound to change
+    def scale_with_exponent(self,magnitudes, max_boxes=10, exp=2.0):
+        experimental_max = 16 #TODO store in better place, bound to change
         normalized = magnitudes / np.abs(experimental_max)
         scaled = np.power(normalized, exp)
-        #scaled = [max(0, int(m) - 1) for m in scaled]
         scaled = np.array(scaled)
         return np.clip((scaled * max_boxes).astype(int), 0, max_boxes)    
 
@@ -169,21 +183,18 @@ class AudioVisualizerApp:
         # Get audio samples
         raw_window_data = self.audio_player.get_latest_samples_window(self.audio_player.audio_segment,self.audio_player.sample_rate)
         if raw_window_data is None or len(raw_window_data) == 0:
-            self.root.after(23, self.update_visualizer)  # ~30 FPS
+            self.root.after(60, self.update_visualizer) 
             return
         
         # Analyze the audio data
         freq_bands = self.audio_analyzer.get_fft_band_energies(raw_window_data, self.audio_player.sample_rate)
-        # Normalize the frequency bands to fit within the grid height
-        normalized_bands = self.scale_with_exponent(freq_bands)
-        print("- - - ")
-        print(freq_bands)
-        print(normalized_bands)
-
-
+        self.EMA_buffer = self.audio_analyzer.EMA(freq_bands, self.EMA_buffer, self.EMA_alpha)
+        normalized_bands = self.scale_with_exponent(self.EMA_buffer)
+    
         self.DrawVisualizer(normalized_bands)
 
-        self.root.after(23, self.update_visualizer)  # ~30 FPS
+
+        self.root.after(60, self.update_visualizer)
 
     def DrawCanvasDetails(self,canvas):
         # Draw a white vertical line through the middle of the canvas

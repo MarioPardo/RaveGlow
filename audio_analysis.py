@@ -117,3 +117,10 @@ class AudioAnalyzer:
         return band_energies
 
 
+    def EMA(self, newvals, emabuffer, alpha):
+
+        for i in range(0, len(emabuffer)):
+            emabuffer[i] = alpha * newvals[i] + (1 - alpha) * emabuffer[i - 1]
+
+        return emabuffer
+
