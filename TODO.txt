@@ -6,7 +6,7 @@ TODO
     - [X] Make this a GUI widget
 - [X] Apply Exponential Moving Average to get smoother bar action
 - [ ] Highs not enough response, might be fixed with filtering
-- [ ] Make bar height properly scale when max num bars is changed
+- [X] Make bar height properly scale when max num bars is changed
 
 -- MUSIC ANALYSIS --
 -[ ] BPM Analysis

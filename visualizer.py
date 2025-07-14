@@ -33,7 +33,7 @@ class AudioVisualizerApp:
         self.EMA_buffer =[0 for _ in range(self.num_freq_bands)]
         self.EMA_alpha = 0.75
 
-        self.low_pass_cutoff = 1000
+        self.low_pass_cutoff = 15000
 
         self.audio_player = AudioPlayerStream()
         self.audio_analyzer = AudioAnalyzer(numbands = self.num_freq_bands)
@@ -111,7 +111,7 @@ class AudioVisualizerApp:
     def findRectableColor(self, value, max_value):
         if value >= 0.8 * max_value:
             return "red"
-        elif value >= 0.7 * max_value:
+        elif value >= 0.6 * max_value:
             return "orange"
         elif value >= 0.4 * max_value:
             return "yellow"
@@ -175,12 +175,12 @@ class AudioVisualizerApp:
         return [min(int(m), self.max_height_bars) for m in mag]
 
     
-    def scale_with_exponent(self,magnitudes, max_boxes=10, exp=2.0):
-        experimental_max = 16 #TODO store in better place, bound to change
-        normalized = magnitudes / np.abs(experimental_max)
+    def scale_with_exponent(self,magnitudes, exp=2.0):
+        normalization_const = 16 #TODO store in better place, bound to change
+        normalized = magnitudes / np.abs(normalization_const)
         scaled = np.power(normalized, exp)
         scaled = np.array(scaled)
-        return np.clip((scaled * max_boxes).astype(int), 0, max_boxes)    
+        return np.clip((scaled * self.max_height_bars).astype(int), 0, self.max_height_bars)    
 
 
     def update_visualizer(self):
