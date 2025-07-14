@@ -80,15 +80,16 @@ class AudioAnalyzer:
     
 
 
-    def get_fft_band_energies(self, samples, sample_rate):
+    def get_fft_band_energies(self, samples, sample_rate, low_pass_cutoff):
         """
         Perform FFT on the input samples and return average magnitudes for
-        the specified frequency bands.
+        the specified frequency bands, with an optional low-pass filter cutoff.
 
         Args:
             samples (np.ndarray): 1D array of audio samples.
             sample_rate (int): Sample rate of the audio in Hz.
-            bands (list of tuples): List of (low_freq, high_freq) tuples defining frequency bands.
+            low_pass_cutoff (float, optional): Frequency in Hz to apply a low-pass filter. 
+                               Frequencies above this value will be ignored.
 
         Returns:
             list: Average magnitudes for each frequency band.
@@ -106,6 +107,12 @@ class AudioAnalyzer:
         half_n = len(samples) // 2
         freqs = freqs[:half_n]
         magnitudes = magnitudes[:half_n]
+
+        # Apply low-pass filter if specified
+        if low_pass_cutoff is not None:
+            low_pass_mask = freqs <= low_pass_cutoff
+            freqs = freqs[low_pass_mask]
+            magnitudes = magnitudes[low_pass_mask]
 
         # Compute average magnitudes for each band
         band_energies = []

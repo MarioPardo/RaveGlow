@@ -26,12 +26,14 @@ class AudioVisualizerApp:
     
 
         #Configuratble Params 
-        self.num_freq_bands = 10
-        self.max_height_bars = 10
+        self.num_freq_bands = 8
+        self.max_height_bars = 15
 
         # Visualizer Processing Params
         self.EMA_buffer =[0 for _ in range(self.num_freq_bands)]
-        self.EMA_alpha = 0.1  
+        self.EMA_alpha = 0.75
+
+        self.low_pass_cutoff = 1000
 
         self.audio_player = AudioPlayerStream()
         self.audio_analyzer = AudioAnalyzer(numbands = self.num_freq_bands)
@@ -67,6 +69,13 @@ class AudioVisualizerApp:
         self.alpha_slider = tk.Scale(self.root, from_=0, to=1, resolution=0.01, orient=tk.HORIZONTAL, command=lambda value: setattr(self, 'EMA_alpha', float(value)))
         self.alpha_slider.set(self.EMA_alpha)  # Default value
         self.alpha_slider.pack(pady=5)
+
+            # --- Low-Pass Filter Slider ---
+        self.low_pass_label = tk.Label(self.root, text="Low-Pass Filter Cutoff (Hz):")
+        self.low_pass_label.pack(pady=5)
+        self.low_pass_slider = tk.Scale(self.root, from_=20, to=20000, resolution=10, orient=tk.HORIZONTAL, command=lambda value: setattr(self, 'low_pass_cutoff', float(value)))
+        self.low_pass_slider.set(self.low_pass_cutoff)  # Default cutoff frequency
+        self.low_pass_slider.pack(pady=5)
 
     def update_ema_alpha(self, value):
         self.ema_alpha = float(value)
@@ -186,8 +195,9 @@ class AudioVisualizerApp:
             self.root.after(60, self.update_visualizer) 
             return
         
+        
         # Analyze the audio data
-        freq_bands = self.audio_analyzer.get_fft_band_energies(raw_window_data, self.audio_player.sample_rate)
+        freq_bands = self.audio_analyzer.get_fft_band_energies(raw_window_data, self.audio_player.sample_rate, self.low_pass_cutoff)
         self.EMA_buffer = self.audio_analyzer.EMA(freq_bands, self.EMA_buffer, self.EMA_alpha)
         normalized_bands = self.scale_with_exponent(self.EMA_buffer)
     

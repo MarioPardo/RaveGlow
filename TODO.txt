@@ -3,13 +3,14 @@ TODO
  -- VISUALIZER  --
 - [X] Green -> Yellow -> Red Color Scheme for visualizer bars  
 - [X] Apply some sort of filter to get less "activation" on bars, currently too full
-    - [ ] Make this a GUI widget
+    - [X] Make this a GUI widget
 - [X] Apply Exponential Moving Average to get smoother bar action
 - [ ] Highs not enough response, might be fixed with filtering
+- [ ] Make bar height properly scale when max num bars is changed
 
 -- MUSIC ANALYSIS --
 -[ ] BPM Analysis
 
 
 -- TINKERING
-- [ ] Knobs to apply filters
+- [X] Knobs to apply filters
