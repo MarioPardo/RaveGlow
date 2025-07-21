@@ -5,6 +5,7 @@ from audio_analysis import AudioAnalyzer
 import numpy as np
 
 from enum import Enum
+from collections import deque
 
 class PlaybackState(Enum):
     STOPPED = 0
@@ -30,13 +31,21 @@ class AudioVisualizerApp:
         self.max_height_bars = 15
 
         # Visualizer Processing Params
-        self.EMA_buffer =[0 for _ in range(self.num_freq_bands)]
+        self.vis_EMA_buffer =[0 for _ in range(self.num_freq_bands)]
         self.EMA_alpha = 0.75
 
         self.low_pass_cutoff = 15000
 
         self.audio_player = AudioPlayerStream()
         self.audio_analyzer = AudioAnalyzer(numbands = self.num_freq_bands)
+
+        #BPM Analysis
+        self.bpm = 0
+        self.seconds_to_store = 15
+        self.numframes_store = int(self.seconds_to_store * (1000 / self.audio_player.audiowindow_duration_ms))
+        self.energy_frame_counter = 0
+        self.ema_energy_buffer = deque(maxlen=self.numframes_store)
+
         self.create_widgets()
 
         
@@ -61,7 +70,22 @@ class AudioVisualizerApp:
 
         self.DrawVisualizer(None)
 
-        # --- Params for Visualizer ---
+        #BPM Counter
+        # --- BPM Counter ---
+
+        bpm_frame = tk.Frame(self.root)
+        bpm_frame.pack(pady=5)
+
+        self.bpm_label = tk.Label(bpm_frame, text="BPM:")
+        self.bpm_label.pack(side=tk.LEFT, padx=5)
+
+        self.bpm_value_label = tk.Label(bpm_frame, text="0")  # Default BPM value
+        self.bpm_value_label.pack(side=tk.LEFT, padx=5)
+
+        self.bpm_color_box = tk.Canvas(bpm_frame, width=20, height=20, bg="grey", highlightthickness=1, highlightbackground="black")
+        self.bpm_color_box.pack(side=tk.LEFT, padx=5)
+
+        # --- Manual Settings for Visualizer ---
 
         # --- EMA Alpha Slider ---
         self.alpha_label = tk.Label(self.root, text="EMA Alpha:")
@@ -192,19 +216,34 @@ class AudioVisualizerApp:
         # Get audio samples
         raw_window_data = self.audio_player.get_latest_samples_window(self.audio_player.audio_segment,self.audio_player.sample_rate)
         if raw_window_data is None or len(raw_window_data) == 0:
-            self.root.after(60, self.update_visualizer) 
+            self.root.after(20, self.update_visualizer) 
             return
         
         
         # Analyze the audio data
         freq_bands = self.audio_analyzer.get_fft_band_energies(raw_window_data, self.audio_player.sample_rate, self.low_pass_cutoff)
-        self.EMA_buffer = self.audio_analyzer.EMA(freq_bands, self.EMA_buffer, self.EMA_alpha)
-        normalized_bands = self.scale_with_exponent(self.EMA_buffer)
+        self.vis_EMA_buffer = self.audio_analyzer.EMA(freq_bands, self.vis_EMA_buffer, self.EMA_alpha)
+        normalized_bands = self.scale_with_exponent(self.vis_EMA_buffer)
     
+        #BPM
+        buffer_energy = (self.audio_analyzer.find_energy(self.vis_EMA_buffer))
+        self.ema_energy_buffer.append(buffer_energy)
+
+
+        #self.ema_energy_buffer = self.audio_analyzer.smooth_energy_buffer(self.ema_energy_buffer)
+        self.energy_frame_counter += 1
+
+        # Update every time we refill buffer
+        if self.energy_frame_counter >= self.numframes_store:
+            self.bpm = self.audio_analyzer.estimate_bpm(self.ema_energy_buffer)
+            if(self.bpm is not None):
+                self.bpm_value_label.config(text=str(int(self.bpm)))
+
+            self.energy_frame_counter = 0
+
         self.DrawVisualizer(normalized_bands)
 
-
-        self.root.after(60, self.update_visualizer)
+        self.root.after(20, self.update_visualizer)
 
     def DrawCanvasDetails(self,canvas):
         # Draw a white vertical line through the middle of the canvas

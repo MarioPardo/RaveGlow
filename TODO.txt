@@ -11,6 +11,11 @@ TODO
 -- MUSIC ANALYSIS --
 -[ ] BPM Analysis
 
+-- CODE STRUCTURE
+- [ ] move role of calling analysis outside of visualizer  
+    - visualizer should probably just get the  current necessary data it needs
+    - analysis should probably be running separately in another thread etc
+
 
 -- TINKERING
 - [X] Knobs to apply filters

@@ -21,7 +21,7 @@ class AudioPlayerStream:
         self.sample_rate = 44100
         self.samples_per_ms = self.sample_rate / 1000.0
         self.chunk_size = 1024
-        self.barlength_ms = 15
+        self.audiowindow_duration_ms = 20
 
         self.stream = None
 
@@ -67,6 +67,9 @@ class AudioPlayerStream:
         
         return samples
     
+    def get_playback_position(self):
+        """Get the current playback position in seconds."""
+        return pygame.mixer.music.get_pos() / 1000.0 if self.current_file else 0
 
 
     def get_latest_samples_window(self, audio_segment, sample_rate):
@@ -74,7 +77,7 @@ class AudioPlayerStream:
         if self.current_file is None or audio_segment is None:
             return None
 
-        windowduration_ms = 200  # how many milliseconds of audio to grab
+        windowduration_ms = self.audiowindow_duration_ms # how many milliseconds of audio to grab
 
         # Get current position from pygame in milliseconds
         self.current_position = pygame.mixer.music.get_pos()
