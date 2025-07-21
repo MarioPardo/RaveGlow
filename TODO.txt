@@ -10,6 +10,9 @@ TODO
 
 -- MUSIC ANALYSIS --
 -[ ] BPM Analysis
+    - [ ] Limit to certain frequencies (lows)
+    - Get visual light to match with BPM
+
 
 -- CODE STRUCTURE
 - [ ] move role of calling analysis outside of visualizer  
@@ -19,3 +22,7 @@ TODO
 
 -- TINKERING
 - [X] Knobs to apply filters
+
+
+-- BUGS --
+- [] Leftmost bar on visualizer not working
