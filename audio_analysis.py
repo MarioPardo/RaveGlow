@@ -1,5 +1,6 @@
 
 import numpy as np
+import librosa
 
 class AudioAnalyzer:
 
@@ -130,70 +131,20 @@ class AudioAnalyzer:
             emabuffer[i] = alpha * newvals[i] + (1 - alpha) * emabuffer[i - 1]
         return emabuffer
 
-    def find_energy(self,audiosamples_inbins):
-        return np.sum(np.square(audiosamples_inbins), axis=0)  
-    
-
-    def smooth_energy_buffer(self, buffer, alpha=0.5):
-        buffer_type = type(buffer)  # Preserve the original type
-        buffer = np.array(buffer, dtype=np.float32)  # Ensure it supports slicing
-        smoothed = [buffer[0]]
-        
-        for val in buffer[1:]:
-            smoothed.append(alpha * val + (1 - alpha) * smoothed[-1])
-        
-        smoothed = np.array(smoothed)
-        return buffer_type(smoothed) if buffer_type is not np.ndarray else smoothed
 
 
-
-    def estimate_bpm(self, energy_buffer, frame_duration=0.02, min_bpm=120, max_bpm=190):
+    def find_bpm_librosa(self, audiosamples, samplerate):
         """
-        Estimate BPM from energy buffer using autocorrelation.
+        Estimate the BPM of an audio signal using librosa.
 
-        Parameters:
-            energy_buffer (List[float]): A list of energy values, one per frame.
-            frame_duration (float): Duration of each frame in seconds (e.g., 0.02 for 20ms).
-            min_bpm (int): Minimum BPM to search for.
-            max_bpm (int): Maximum BPM to search for.
+        Args:
+            audiosamples (np.ndarray): 1D array of audio samples.
+            samplerate (int): Sample rate of the audio in Hz.
 
         Returns:
-            float: Estimated BPM.
+            float: Estimated BPM or None if estimation fails.
         """
-        if len(energy_buffer) < 2:
-            return None  # Not enough data
-
-        # Perform autocorrelation
-        autocorr = np.correlate(energy_buffer, energy_buffer, mode='full')
-        autocorr = autocorr[len(autocorr)//2:]  # Keep only positive lags
-        autocorr /= np.max(autocorr)
-
-        # Convert BPM range to lag range
-        min_lag = int(60 / max_bpm / frame_duration)
-        max_lag = int(60 / min_bpm / frame_duration)
-
-        if max_lag >= len(autocorr):
-            max_lag = len(autocorr) - 1
-
-        # Only consider valid BPM lags
-        search_region = autocorr[min_lag:max_lag]
-        if len(search_region) == 0:
-            return None
-
-        # Print table of lag, BPM, score
-        print(f"{'Lag':>5} | {'BPM':>6} | {'Score':>7}")
-        print("-" * 25)
-        for i, score in enumerate(search_region):
-            lag = i + min_lag
-            bpm = 60.0 / (lag * frame_duration)
-            print(f"{lag:>5} | {bpm:6.2f} | {score:7.4f}")
-
-        best_lag = np.argmax(search_region) + min_lag
-        estimated_bpm = 60.0 / (best_lag * frame_duration)
-
-        print("\nBest Lag:", best_lag)
-        print("Estimated BPM:", f"{estimated_bpm:.2f}")
-
-        return estimated_bpm
 
 
+        tempo, beat_frames = librosa.beat.beat_track(y=audiosamples, sr=samplerate)
+        return tempo

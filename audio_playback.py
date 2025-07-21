@@ -3,6 +3,7 @@ from pydub import AudioSegment
 import numpy as np
 from typing import Tuple
 from collections import deque
+import librosa
 
 
 
@@ -101,6 +102,25 @@ class AudioPlayerStream:
             samples = samples.reshape((-1, 2)).mean(axis=1)
 
         return samples
+    
+    def get_last_x_seconds(self, seconds):
+        """Get the last X seconds of audio samples."""
+        if self.current_file is None or self.audio_segment is None:
+            return None
+
+        total_length_ms = len(self.audio_segment)
+        start_time_ms = max(0, total_length_ms - (seconds * 1000))
+        end_time_ms = total_length_ms
+
+        # Extract the audio segment for the last X seconds
+        segment = self.audio_segment[start_time_ms:end_time_ms]
+
+        # Convert the audio segment to raw samples
+        samples = np.array(segment.get_array_of_samples())
+        if segment.channels == 2:
+            samples = samples.reshape((-1, 2)).mean(axis=1)
+
+        return samples 
 
 
     def def_addblank_startpadding(self,data, samplerate, seconds):

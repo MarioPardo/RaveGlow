@@ -44,7 +44,6 @@ class AudioVisualizerApp:
         self.seconds_to_store = 15
         self.numframes_store = int(self.seconds_to_store * (1000 / self.audio_player.audiowindow_duration_ms))
         self.energy_frame_counter = 0
-        self.ema_energy_buffer = deque(maxlen=self.numframes_store)
 
         self.create_widgets()
 
@@ -226,19 +225,13 @@ class AudioVisualizerApp:
         normalized_bands = self.scale_with_exponent(self.vis_EMA_buffer)
     
         #BPM
-        buffer_energy = (self.audio_analyzer.find_energy(self.vis_EMA_buffer))
-        self.ema_energy_buffer.append(buffer_energy)
-
-
-        #self.ema_energy_buffer = self.audio_analyzer.smooth_energy_buffer(self.ema_energy_buffer)
         self.energy_frame_counter += 1
 
         # Update every time we refill buffer
         if self.energy_frame_counter >= self.numframes_store:
-            self.bpm = self.audio_analyzer.estimate_bpm(self.ema_energy_buffer)
-            if(self.bpm is not None):
-                self.bpm_value_label.config(text=str(int(self.bpm)))
-
+            print("FINDING BPM")
+            self.bpm = self.audio_analyzer.find_bpm_librosa(self.audio_player.get_last_x_seconds(self.seconds_to_store), self.audio_player.sample_rate)
+            print(f"BPM: {self.bpm}")
             self.energy_frame_counter = 0
 
         self.DrawVisualizer(normalized_bands)
