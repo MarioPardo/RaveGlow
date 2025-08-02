@@ -2,3 +2,41 @@
 /__pycache__/
 Visualizer/venv/
 get-pip.py
+
+# Compiled object files and build directory
+build/
+*.o
+*.d
+*.elf
+*.map
+*.bin
+*.hex
+*.exe
+*.out
+
+# CMake-generated files
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+.project
+.settings/
+
+# ESP-IDF specific
+sdkconfig
+sdkconfig.old
+
+# PlatformIO (if you're using it)
+.pio/
+.pioenvs/
+.piolibdeps/
+.clangd/
+.vscode/
+
+# Editor-specific files
+*.swp
+*.swo
+*.swn
+*.tmp
+*.bak
+*.orig
