@@ -1,13 +1,16 @@
-#include <stdio.h>
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
+extern "C" {
+    #include <stdio.h>
+    #include "freertos/FreeRTOS.h"
+    #include "freertos/task.h"
 
-#include "driver/gpio.h"
+    #include "driver/gpio.h"
+}
 
 #define BUTTON1_GPIO GPIO_NUM_23
 #define BUTTON2_GPIO GPIO_NUM_22
 
-void app_main(void) {
+
+extern "C" void app_main(void) {
     // Configure GPIO pins
     gpio_config_t io_conf = {
         .pin_bit_mask = (1ULL << BUTTON1_GPIO) | (1ULL << BUTTON2_GPIO),
@@ -17,6 +20,10 @@ void app_main(void) {
         .intr_type = GPIO_INTR_DISABLE       // No interrupts yet
     };
     gpio_config(&io_conf);
+
+    printf("Hello!");
+    printf(" ");
+    printf(" ");
 
     while (1) {
         int button1_state = gpio_get_level(BUTTON1_GPIO);
