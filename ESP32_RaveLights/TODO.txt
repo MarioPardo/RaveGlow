@@ -1,0 +1,23 @@
+Lighting Control
+[ ] Basic writing to LED strip
+[ ] Basic Animation task class
+    - Triggered by button
+    - Blink
+[ ] Animation task child classes
+    - Non blocking
+    - get fuseWave working 
+
+[ ] Test animation functions in quick succession
+
+
+Keyboard control of functions
+[ ] Reliably read keyboard input
+ - trigger simple functions
+[ ] Map certain keys to certain animations
+
+
+Bluetooth
+[ ] Computer sends simple message
+[ ] ESP32 can send message back and identify itself
+[ ] send commands through bluetooth
+
