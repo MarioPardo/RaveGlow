@@ -4,38 +4,165 @@ extern "C" {
     #include "freertos/task.h"
 
     #include "driver/gpio.h"
+    #include "led_strip.h"
+    #include "esp_log.h"
+    #include "esp_err.h"
 }
 
 #define BUTTON1_GPIO GPIO_NUM_23
 #define BUTTON2_GPIO GPIO_NUM_22
 
+#define TEST_GPIO GPIO_NUM_21 // This is the GPIO for the LED strip, change as needed
 
-extern "C" void app_main(void) {
-    // Configure GPIO pins
-    gpio_config_t io_conf = {
+//LED Strip
+#define LED_STRIP_USE_DMA  0
+#define LED_STRIP_RMT_RES_HZ 10000000
+#define LED_STRIP_MEMORY_BLOCK_WORDS 64 
+#define LED_STRIP_GPIO GPIO_NUM_18            
+#define LED_STRIP_LENGTH 50           
+
+
+static const char *TAG = "ESP32";
+
+
+/////// LED FUNCTIONS //////
+
+
+
+led_strip_handle_t configure_led(void)
+{
+    // LED strip general initialization, according to your led board design
+    led_strip_config_t strip_config = {
+        .strip_gpio_num = LED_STRIP_GPIO, 
+        .max_leds = LED_STRIP_LENGTH,     
+        .led_model = LED_MODEL_WS2812,        
+        .color_component_format = LED_STRIP_COLOR_COMPONENT_FMT_RGB,
+        .flags = {
+            .invert_out = false, 
+        }
+    };
+
+    // LED strip backend configuration: RMT
+    led_strip_rmt_config_t rmt_config = {
+        .clk_src = RMT_CLK_SRC_DEFAULT,        // different clock source can lead to different power consumption
+        .resolution_hz = LED_STRIP_RMT_RES_HZ, // RMT counter clock frequency
+        .mem_block_symbols = LED_STRIP_MEMORY_BLOCK_WORDS, // the memory block size used by the RMT channel
+        .flags = {
+            .with_dma = LED_STRIP_USE_DMA,     // Using DMA can improve performance when driving more LEDs
+        }
+    };
+
+    // LED Strip object handle
+    led_strip_handle_t led_strip;
+    ESP_ERROR_CHECK(led_strip_new_rmt_device(&strip_config, &rmt_config, &led_strip));
+    ESP_LOGI(TAG, "Created LED strip object with RMT backend");
+    return led_strip;
+}
+
+
+void blink_leds(led_strip_handle_t led_strip, int delay_ms, int times) {
+    for (int i = 0; i < times; i++) {
+
+
+        // Turn all LEDs on (set to white color)
+          for (int j = 0; j < LED_STRIP_LENGTH; j++) {
+                ESP_ERROR_CHECK(led_strip_set_pixel(led_strip, j, 200, 200, 200));
+            }
+        ESP_ERROR_CHECK(led_strip_refresh(led_strip));
+        vTaskDelay(pdMS_TO_TICKS(delay_ms));
+
+        // Turn all LEDs off
+        ESP_ERROR_CHECK(led_strip_clear(led_strip));
+        vTaskDelay(pdMS_TO_TICKS(delay_ms));
+    }
+}
+
+void turn_on_all_leds(led_strip_handle_t led_strip, uint8_t red, uint8_t green, uint8_t blue) {
+    for (int i = 0; i < LED_STRIP_LENGTH; i++) {
+        ESP_ERROR_CHECK(led_strip_set_pixel(led_strip, i, red, green, blue));
+    }
+    ESP_ERROR_CHECK(led_strip_refresh(led_strip));
+}
+
+void turn_off_all_leds(led_strip_handle_t led_strip) {
+    ESP_ERROR_CHECK(led_strip_clear(led_strip));
+}
+
+void fuse_wave(led_strip_handle_t led_strip, uint8_t red, uint8_t green, uint8_t blue, int speed_ms = 50) {
+    for (int i = 0; i < LED_STRIP_LENGTH; i++) {
+        // Clear all LEDs
+        ESP_ERROR_CHECK(led_strip_clear(led_strip));
+
+        // Turn on the current LED
+        ESP_ERROR_CHECK(led_strip_set_pixel(led_strip, i, red, green, blue));
+        ESP_ERROR_CHECK(led_strip_refresh(led_strip));
+
+        // Delay for the specified speed
+        vTaskDelay(pdMS_TO_TICKS(speed_ms));
+    }
+}
+
+//  END LED FUNCTIONS ///////
+
+
+
+
+void setup()
+{
+    //Configure GPIO
+
+     // Configure LED GPIO as output
+    gpio_config_t led_io_conf = {
+        .pin_bit_mask = (1ULL << LED_STRIP_GPIO),
+        .mode = GPIO_MODE_OUTPUT,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE
+    };
+    gpio_config(&led_io_conf);
+
+    // Configure BUTTON1_GPIO and BUTTON2_GPIO as input with pull-down
+    gpio_config_t button_io_conf = {
         .pin_bit_mask = (1ULL << BUTTON1_GPIO) | (1ULL << BUTTON2_GPIO),
         .mode = GPIO_MODE_INPUT,
-        .pull_up_en = GPIO_PULLUP_DISABLE,   // Enable internal pull-up resistor
+        .pull_up_en = GPIO_PULLUP_DISABLE,
         .pull_down_en = GPIO_PULLDOWN_ENABLE,
-        .intr_type = GPIO_INTR_DISABLE       // No interrupts yet
+        .intr_type = GPIO_INTR_DISABLE
     };
-    gpio_config(&io_conf);
+    gpio_config(&button_io_conf);
+}
 
-    printf("Hello!");
-    printf(" ");
-    printf(" ");
 
+extern "C" void app_main(void) 
+{
+   
+   setup();
+
+    led_strip_handle_t led_strip = configure_led();
+    if (led_strip == NULL) {
+        ESP_LOGE(TAG, "Failed to configure LED strip");
+        return;
+    }
+
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    fflush(stdout);
+
+    ESP_LOGI(TAG, "Reached main loop");
     while (1) {
-        int button1_state = gpio_get_level(BUTTON1_GPIO);
-        int button2_state = gpio_get_level(BUTTON2_GPIO);
 
-        if (button1_state == 1) {
-            printf("Button 1 is Pressed\n");
+        // Check if BUTTON1 is pressed
+        if (gpio_get_level(BUTTON1_GPIO) == 1) {
+            ESP_LOGI(TAG, "Button 1 pressed, Blinking on LEDs");
+            blink_leds(led_strip, 500, 5); // Blink LEDs 5 times with 500 ms delay
         }
 
-        if (button2_state == 1) {
-            printf("Button 2 is Pressed\n");
+        // Check if BUTTON2 is pressed
+        if (gpio_get_level(BUTTON2_GPIO) == 1) {
+            ESP_LOGI(TAG, "Button 2 pressed, turning off LEDs");
+            fuse_wave(led_strip, 255, 255, 255); // Turn off all LEDs
         }
+
+
 
         vTaskDelay(pdMS_TO_TICKS(200));  // Check every 200 ms
     }
