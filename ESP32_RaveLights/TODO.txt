@@ -1,5 +1,5 @@
 Lighting Control
-[ ] Basic writing to LED strip
+[x] Basic writing to LED strip
 [ ] Basic Animation task class
     - Triggered by button
     - Blink
@@ -8,7 +8,7 @@ Lighting Control
     - get fuseWave working 
 
 [ ] Test animation functions in quick succession
-
+[ ] Look into using DMA for light strip
 
 Keyboard control of functions
 [ ] Reliably read keyboard input
@@ -21,3 +21,6 @@ Bluetooth
 [ ] ESP32 can send message back and identify itself
 [ ] send commands through bluetooth
 
+
+General
+[x] Use proper RTOS task structure
