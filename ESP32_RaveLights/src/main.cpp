@@ -7,9 +7,13 @@ extern "C" {
     #include "driver/gpio.h"
     #include "led_strip.h"
 
+
     #include "esp_log.h"
     #include "esp_err.h"
 }
+
+#include "animations/fuse_wave.hpp"
+
 
 // GPIO Definitions
 #define BUTTON1_GPIO GPIO_NUM_23
@@ -83,16 +87,6 @@ void blink_leds(led_strip_handle_t led_strip, int delay_ms, int times) {
     }
 }
 
-void turn_on_all_leds(led_strip_handle_t led_strip, uint8_t red, uint8_t green, uint8_t blue) {
-    for (int i = 0; i < LED_STRIP_LENGTH; i++) {
-        ESP_ERROR_CHECK(led_strip_set_pixel(led_strip, i, red, green, blue));
-    }
-    ESP_ERROR_CHECK(led_strip_refresh(led_strip));
-}
-
-void turn_off_all_leds(led_strip_handle_t led_strip) {
-    ESP_ERROR_CHECK(led_strip_clear(led_strip));
-}
 
 void fuse_wave(led_strip_handle_t led_strip, uint8_t red, uint8_t green, uint8_t blue, int speed_ms = 50) {
     for (int i = 0; i < LED_STRIP_LENGTH; i++) {
@@ -142,10 +136,14 @@ void lighting_task(void *pvParameters) {
     LightingCommand cmd;
     while (1) {
         if (xQueueReceive(lightingQueue, &cmd, portMAX_DELAY)) {
-            switch (cmd) {
-                case CMD_FUSE_WAVE:
-                    fuse_wave(led_strip, 255,255,255);
+            switch(cmd) {
+                case CMD_FUSE_WAVE: {
+                
+                    FuseWave fusewave(led_strip, 255, 0, 0, 120); // Red color with 120 BPM
+                    fusewave.start();
+                    fuse_wave(led_strip, 255, 0, 0, 50); // Red color with 50 ms speed
                     break;
+                }
                 case CMD_BLINK_LEDS:
                     blink_leds(led_strip, 500, 3);
                     break;
