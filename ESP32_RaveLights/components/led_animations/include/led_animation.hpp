@@ -3,16 +3,21 @@
 
 #include <cstdint>
 #include <vector>
+
+extern "C" {
 #include "led_strip.h" 
+}
 
 class LedAnimation {
 public:
-    LedAnimation(led_strip_handle_t strip) : ledstrip(strip), active(false) {}
+    LedAnimation(led_strip_handle_t strip, uint32_t length) : ledstrip(strip), ledcount(length) {}
     virtual ~LedAnimation() = default;
 
     virtual void start() 
     {
         active = true;
+        started = true;
+        
     }
 
     virtual bool act_frame() = 0;
@@ -23,12 +28,19 @@ public:
 
     bool isActive() const { return active; }
 
-protected:
-    led_strip_handle_t ledstrip = nullptr;
     bool active = false;
-    uint32_t startTime = 0;  // Start time in milliseconds
-    float beatTime = 0.0f;  // Time per beat in milliseconds
+    bool started = false;
     bool hasMultipleFrames;
-    uint32_t frameNumber = 0;  // Frame number for animations that have multiple frames
+    float frameTime;
 
+protected:
+    led_strip_handle_t ledstrip;
+    uint32_t ledcount;
+    float startTime = 0;  // Start time in milliseconds
+    float beatTime; // Time per beat in milliseconds
+    uint32_t numFrames;
+    uint32_t frameNumber = 0; // Frame number for animations that have multiple frames
+    float lastFrameTime = 0;
+
+    uint8_t red, green, blue;
 };
