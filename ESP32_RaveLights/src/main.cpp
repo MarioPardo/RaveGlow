@@ -1,18 +1,20 @@
+
+
 extern "C" {
     #include <stdio.h>
     #include "freertos/FreeRTOS.h"
     #include "freertos/task.h"
     #include "freertos/queue.h"
-
     #include "driver/gpio.h"
+
     #include "led_strip.h"
-
-
+    
     #include "esp_log.h"
     #include "esp_err.h"
 }
 
 #include "animations/fuse_wave.hpp"
+#include "animation_queue.hpp"
 
 
 // GPIO Definitions
@@ -25,17 +27,18 @@ extern "C" {
 #define LED_STRIP_USE_DMA  0
 #define LED_STRIP_RMT_RES_HZ 10000000
 #define LED_STRIP_MEMORY_BLOCK_WORDS 64 
-#define LED_STRIP_LENGTH 50           
+#define LED_STRIP_LENGTH 50    
+led_strip_handle_t led_strip = NULL;
 
+//Handling Input for Lighting Commands
+#define MAX_ANIMATIONS 5 //max animations one strip can handle at once
 typedef enum {
     CMD_FUSE_WAVE,
     CMD_BLINK_LEDS
 }LightingCommand;
-
-QueueHandle_t lightingQueue;
-
-led_strip_handle_t led_strip = NULL;
-
+QueueHandle_t inputQueue;
+uint8_t animationPriority = 9;
+void animation_task(void *pvParameters);
 
 static const char *TAG = "ESP32";
 
@@ -76,7 +79,7 @@ void blink_leds(led_strip_handle_t led_strip, int delay_ms, int times) {
     for (int i = 0; i < times; i++) {
         // Turn all LEDs on (set to white color)
         for (int j = 0; j < LED_STRIP_LENGTH; j++) {
-            ESP_ERROR_CHECK(led_strip_set_pixel(led_strip, j, 200, 200, 200));
+            ESP_ERROR_CHECK(led_strip_set_pixel(led_strip, j, 255, 255, 255));
         }
         ESP_ERROR_CHECK(led_strip_refresh(led_strip));
         vTaskDelay(pdMS_TO_TICKS(delay_ms));
@@ -86,9 +89,7 @@ void blink_leds(led_strip_handle_t led_strip, int delay_ms, int times) {
         vTaskDelay(pdMS_TO_TICKS(delay_ms));
     }
 }
-
-
-void fuse_wave(led_strip_handle_t led_strip, uint8_t red, uint8_t green, uint8_t blue, int speed_ms = 50) {
+void fuse_wave(led_strip_handle_t led_strip, uint8_t red, uint8_t green, uint8_t blue, int speed_ms) {
     for (int i = 0; i < LED_STRIP_LENGTH; i++) {
         // Clear all LEDs
         ESP_ERROR_CHECK(led_strip_clear(led_strip));
@@ -103,52 +104,101 @@ void fuse_wave(led_strip_handle_t led_strip, uint8_t red, uint8_t green, uint8_t
 }
 
 
-// Tasks
+////// Tasks //////
 
 void input_task(void *pvParameters)
 {
-    while(1)
+    while (1)
     {
-         // Check if BUTTON1 is pressed
         if (gpio_get_level(BUTTON1_GPIO) == 1) {
             ESP_LOGI(TAG, "Button 1 pressed");
             LightingCommand cmd = CMD_FUSE_WAVE;
-            xQueueSend(lightingQueue, &cmd, portMAX_DELAY);
+            xQueueSend(inputQueue, &cmd, portMAX_DELAY);
             vTaskDelay(pdMS_TO_TICKS(200)); 
-          
         }
 
-        // Check if BUTTON2 is pressed
         if (gpio_get_level(BUTTON2_GPIO) == 1) {
-            ESP_LOGI(TAG, "Button 2 pressed");
+            ESP_LOGI(TAG, "Button 2 pressed, Blink");
             LightingCommand cmd = CMD_BLINK_LEDS;
-            xQueueSend(lightingQueue, &cmd, portMAX_DELAY);
+            xQueueSend(inputQueue, &cmd, portMAX_DELAY);
             vTaskDelay(pdMS_TO_TICKS(200));
         }
 
-        vTaskDelay(pdMS_TO_TICKS(100));  // Check every 100 ms
-
+        vTaskDelay(pdMS_TO_TICKS(50));
     }
 }
 
-
-void lighting_task(void *pvParameters) {
+void lighting_handler_task(void *pvParameters) {
     LightingCommand cmd;
     while (1) {
-        if (xQueueReceive(lightingQueue, &cmd, portMAX_DELAY)) {
-            switch(cmd) {
+        if (xQueueReceive(inputQueue, &cmd, portMAX_DELAY)) {
+            switch (cmd) {
                 case CMD_FUSE_WAVE: {
-                
-                    FuseWave fusewave(led_strip, 255, 0, 0, 120); // Red color with 120 BPM
-                    fusewave.start();
-                    fuse_wave(led_strip, 255, 0, 0, 50); // Red color with 50 ms speed
+                    ESP_LOGI(TAG, "Creating fusewave");
+                    FuseWave* fusewave = new FuseWave(led_strip,LED_STRIP_LENGTH, 255, 255, 255, 120);
+                    xTaskCreate(animation_task, "FuseWaveTask", 2048, fusewave, animationPriority--, NULL);
                     break;
                 }
                 case CMD_BLINK_LEDS:
-                    blink_leds(led_strip, 500, 3);
+                    ESP_LOGI(TAG, "Blinking LEDs");
+                    break;
+                default:
+                    ESP_LOGW(TAG, "Unknown command received");
                     break;
             }
         }
+    }
+}
+
+// Clears LEDs before new "frame" of animations
+void lighting_clear_task(void *pvParameters) {
+    while (1) {
+        ESP_ERROR_CHECK(led_strip_clear(led_strip));
+        ESP_LOGI("LightingClearTask", "LEDs cleared");
+        vTaskDelay(pdMS_TO_TICKS(100)); // 10 fps
+    }
+}
+
+// Once all animations have run their frames, refresh
+void lighting_refresh_task(void *pvParameters) {
+    while (1) {
+        ESP_ERROR_CHECK(led_strip_refresh(led_strip));
+        ESP_LOGI("LightingRefreshTask", "LEDs refreshed");
+        vTaskDelay(pdMS_TO_TICKS(100)); //10 fps
+    }
+}
+
+void animation_task(void *pvParameters) {
+    LedAnimation* animation = static_cast<LedAnimation*>(pvParameters);
+
+    while(1)
+    {
+        ESP_LOGI("AnimationTask", "Inside animation task");
+        
+        if(!animation->started)
+            animation->start();
+
+        if(animation->active)
+        {
+            ESP_ERROR_CHECK(led_strip_clear(led_strip));
+            animation->act_frame();
+            ESP_ERROR_CHECK(led_strip_refresh(led_strip));
+
+            if(!animation->active)
+            {
+                animation->stop();
+                vTaskDelete(NULL);
+                animationPriority++;
+            }
+
+            vTaskDelay(pdMS_TO_TICKS(animation->frameTime));
+        }else
+        {
+            animation->stop();
+            vTaskDelete(NULL);
+            animationPriority++;
+        }
+
     }
 }
 
@@ -185,7 +235,7 @@ void setup()
 
 extern "C" void app_main(void) 
 {
-   
+
    setup();
 
     led_strip = configure_ledstrip();
@@ -198,9 +248,11 @@ extern "C" void app_main(void)
     fflush(stdout);
     ESP_LOGI(TAG, "Reached main loop");
 
+    inputQueue = xQueueCreate(5, sizeof(LightingCommand));
 
-    lightingQueue = xQueueCreate(4, sizeof(LightingCommand));
+    xTaskCreate(input_task, "InputTask", 2048, NULL, 1, NULL);
+    xTaskCreate(lighting_handler_task, "LightingTask", 2048, NULL, 2, NULL);
+   // xTaskCreate(lighting_clear_task, "LightingClearTask", 2048, NULL, 10, NULL);
+    //xTaskCreate(lighting_refresh_task, "LightingRefreshTask", 2048, NULL, 6, NULL);
 
-    xTaskCreate(input_task, "InputTask", 2048, NULL, 5, NULL);
-    xTaskCreate(lighting_task, "LightingTask", 2048, NULL, 5, NULL);
 }
