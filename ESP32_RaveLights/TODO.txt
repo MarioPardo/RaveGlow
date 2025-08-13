@@ -1,13 +1,13 @@
 Lighting Control
 [x] Basic writing to LED strip
-[ ] Basic Animation task class
+[x] Basic Animation task class
     - Triggered by button
     - Blink
-[ ] Animation task child classes
+[x] Animation task child classes
     - Non blocking
     - get fuseWave working 
 
-[ ] Test animation functions in quick succession
+[X] Test animation functions in quick succession
 [ ] Look into using DMA for light strip
 
 Keyboard control of functions

@@ -4,6 +4,7 @@ extern "C" {
     #include <stdio.h>
     #include "freertos/FreeRTOS.h"
     #include "freertos/task.h"
+    #include "freertos/semphr.h"
     #include "freertos/queue.h"
     #include "driver/gpio.h"
 
@@ -13,8 +14,8 @@ extern "C" {
     #include "esp_err.h"
 }
 
+#include "led_animation.hpp"
 #include "animations/fuse_wave.hpp"
-#include "animation_queue.hpp"
 
 
 // GPIO Definitions
@@ -31,13 +32,15 @@ extern "C" {
 led_strip_handle_t led_strip = NULL;
 
 //Handling Input for Lighting Commands
-#define MAX_ANIMATIONS 5 //max animations one strip can handle at once
+#define MAX_ANIM_PRIORITY 7
 typedef enum {
     CMD_FUSE_WAVE,
     CMD_BLINK_LEDS
 }LightingCommand;
 QueueHandle_t inputQueue;
-uint8_t animationPriority = 9;
+uint8_t numActiveAnimations = 0;
+SemaphoreHandle_t led_strip_mutex = NULL;
+pixel_t LED_STRIP_BUFFER[LED_STRIP_LENGTH] = {};  //init to all 0
 void animation_task(void *pvParameters);
 
 static const char *TAG = "ESP32";
@@ -74,34 +77,11 @@ led_strip_handle_t configure_ledstrip(void)
     return led_strip;
 }
 
-void blink_leds(led_strip_handle_t led_strip, int delay_ms, int times) {
 
-    for (int i = 0; i < times; i++) {
-        // Turn all LEDs on (set to white color)
-        for (int j = 0; j < LED_STRIP_LENGTH; j++) {
-            ESP_ERROR_CHECK(led_strip_set_pixel(led_strip, j, 255, 255, 255));
-        }
-        ESP_ERROR_CHECK(led_strip_refresh(led_strip));
-        vTaskDelay(pdMS_TO_TICKS(delay_ms));
+// LED Task Handling ////
 
-        // Turn all LEDs off
-        ESP_ERROR_CHECK(led_strip_clear(led_strip));
-        vTaskDelay(pdMS_TO_TICKS(delay_ms));
-    }
-}
-void fuse_wave(led_strip_handle_t led_strip, uint8_t red, uint8_t green, uint8_t blue, int speed_ms) {
-    for (int i = 0; i < LED_STRIP_LENGTH; i++) {
-        // Clear all LEDs
-        ESP_ERROR_CHECK(led_strip_clear(led_strip));
+#define MAX_LED_TASKS 5
 
-        // Turn on the current LED
-        ESP_ERROR_CHECK(led_strip_set_pixel(led_strip, i, red, green, blue));
-        ESP_ERROR_CHECK(led_strip_refresh(led_strip));
-
-        // Delay for the specified speed
-        vTaskDelay(pdMS_TO_TICKS(speed_ms));
-    }
-}
 
 
 ////// Tasks //////
@@ -124,7 +104,7 @@ void input_task(void *pvParameters)
             vTaskDelay(pdMS_TO_TICKS(200));
         }
 
-        vTaskDelay(pdMS_TO_TICKS(50));
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 
@@ -135,8 +115,9 @@ void lighting_handler_task(void *pvParameters) {
             switch (cmd) {
                 case CMD_FUSE_WAVE: {
                     ESP_LOGI(TAG, "Creating fusewave");
-                    FuseWave* fusewave = new FuseWave(led_strip,LED_STRIP_LENGTH, 255, 255, 255, 120);
-                    xTaskCreate(animation_task, "FuseWaveTask", 2048, fusewave, animationPriority--, NULL);
+                    FuseWave* fusewave = new FuseWave(LED_STRIP_BUFFER,LED_STRIP_LENGTH, 255, 255, 255, 160);
+                    xTaskCreate(animation_task, "FuseWaveTask", 2048, fusewave, MAX_ANIM_PRIORITY, NULL);
+                    numActiveAnimations++;
                     break;
                 }
                 case CMD_BLINK_LEDS:
@@ -147,58 +128,63 @@ void lighting_handler_task(void *pvParameters) {
                     break;
             }
         }
+
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 
-// Clears LEDs before new "frame" of animations
-void lighting_clear_task(void *pvParameters) {
-    while (1) {
-        ESP_ERROR_CHECK(led_strip_clear(led_strip));
-        ESP_LOGI("LightingClearTask", "LEDs cleared");
-        vTaskDelay(pdMS_TO_TICKS(100)); // 10 fps
-    }
-}
 
-// Once all animations have run their frames, refresh
+// Responsible for refreshing the LED strip 
 void lighting_refresh_task(void *pvParameters) {
-    while (1) {
-        ESP_ERROR_CHECK(led_strip_refresh(led_strip));
-        ESP_LOGI("LightingRefreshTask", "LEDs refreshed");
-        vTaskDelay(pdMS_TO_TICKS(100)); //10 fps
+    while (1)
+    {
+        if (xSemaphoreTake(led_strip_mutex, portMAX_DELAY) == pdTRUE) 
+        {
+            // Clear LED Strip
+            ESP_ERROR_CHECK(led_strip_clear(led_strip));
+
+            // Copy LED Buffer into actual strip
+            for (int i = 0; i < LED_STRIP_LENGTH; i++) {
+                ESP_ERROR_CHECK(led_strip_set_pixel(led_strip, i, LED_STRIP_BUFFER[i].r, LED_STRIP_BUFFER[i].g, LED_STRIP_BUFFER[i].b));
+            }
+
+            // Refresh LED strip
+            ESP_ERROR_CHECK(led_strip_refresh(led_strip));
+
+            // Clear buffer
+            memset(LED_STRIP_BUFFER, 0, sizeof(LED_STRIP_BUFFER));
+
+            xSemaphoreGive(led_strip_mutex);
+        } 
+
+        vTaskDelay(pdMS_TO_TICKS(30)); // 30fps
     }
 }
 
 void animation_task(void *pvParameters) {
     LedAnimation* animation = static_cast<LedAnimation*>(pvParameters);
-
+    
     while(1)
     {
-        ESP_LOGI("AnimationTask", "Inside animation task");
-        
         if(!animation->started)
             animation->start();
 
         if(animation->active)
         {
-            ESP_ERROR_CHECK(led_strip_clear(led_strip));
-            animation->act_frame();
-            ESP_ERROR_CHECK(led_strip_refresh(led_strip));
-
-            if(!animation->active)
-            {
-                animation->stop();
-                vTaskDelete(NULL);
-                animationPriority++;
-            }
-
-            vTaskDelay(pdMS_TO_TICKS(animation->frameTime));
-        }else
-        {
-            animation->stop();
-            vTaskDelete(NULL);
-            animationPriority++;
+            // Get control of led strip
+            if (xSemaphoreTake(led_strip_mutex, portMAX_DELAY) == pdTRUE) {
+                animation->act_frame();
+                xSemaphoreGive(led_strip_mutex);
+            } else
+                ESP_LOGW("AnimationTask", "Failed to take LED strip mutex");
+            
+            vTaskDelay(pdMS_TO_TICKS(10));
         }
-
+        else
+        {
+            numActiveAnimations--;
+            vTaskDelete(NULL);
+        }
     }
 }
 
@@ -244,15 +230,18 @@ extern "C" void app_main(void)
         return;
     }
 
-    vTaskDelay(pdMS_TO_TICKS(1000));
-    fflush(stdout);
+    led_strip_mutex = xSemaphoreCreateMutex();
+    if (led_strip_mutex == NULL) {
+        ESP_LOGE(TAG, "Failed to create LED strip mutex");
+        return;
+    }
+
     ESP_LOGI(TAG, "Reached main loop");
 
     inputQueue = xQueueCreate(5, sizeof(LightingCommand));
 
     xTaskCreate(input_task, "InputTask", 2048, NULL, 1, NULL);
     xTaskCreate(lighting_handler_task, "LightingTask", 2048, NULL, 2, NULL);
-   // xTaskCreate(lighting_clear_task, "LightingClearTask", 2048, NULL, 10, NULL);
-    //xTaskCreate(lighting_refresh_task, "LightingRefreshTask", 2048, NULL, 6, NULL);
+    xTaskCreate(lighting_refresh_task, "LightingRefreshTask", 2048, NULL, 10, NULL);
 
 }
