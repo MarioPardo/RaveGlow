@@ -9,8 +9,8 @@ extern "C" {
 }
 
 
-FuseWave::FuseWave(led_strip_handle_t strip, uint32_t length, uint8_t r, uint8_t g, uint8_t b, uint32_t BPM)
-            : LedAnimation(strip, length){
+FuseWave::FuseWave(pixel_t* ledstrip_buffer, uint32_t length, uint8_t r, uint8_t g, uint8_t b, uint32_t BPM)
+            : LedAnimation(ledstrip_buffer, length){
     this->red = r;
     this->green = g;
     this->blue = b;
@@ -20,8 +20,7 @@ FuseWave::FuseWave(led_strip_handle_t strip, uint32_t length, uint8_t r, uint8_t
     this->numFrames =  ledcount / chunkSize; // Calculate number of frames based on chunk size
     this->frameTime = this->beatTime / this->numFrames; // Calculate time per frame
     
-    ESP_LOGI("FuseWave", "BPM: %u, Beat Time: %f ms", BPM, this->beatTime);
-    ESP_LOGI("FuseWave", "Number of frames: %u, Frame time: %f ms", this->numFrames, this->frameTime);
+    ESP_LOGI("FuseWave", "BPM: %u, Beat Time: %f ms, Frame Time: %f ms", BPM, this->beatTime, this->frameTime);
    
     }
 
@@ -29,52 +28,46 @@ void FuseWave::start()
 {
     LedAnimation::start();
     this->frameNumber = 0;
-    this->startTime = esp_timer_get_time() / 1000; // Get current time in milliseconds
     
     ESP_LOGI("FuseWave", "Starting FuseWave animation");
 
 }
 
 bool FuseWave::act_frame() {
+    
+
+    // Ensure we should be acting on this frame
     if(!active) 
-        return false; // Animation is not active
+        return false;
 
-    // TODO if has taken too long, using start time, end it
+    if (frameNumber > numFrames) {
+        stop();
+        return false;
+    }
 
+    // Only update if it is time to do so 
     float timeSinceLastFrame = (esp_timer_get_time() / 1000) - lastFrameTime;
     if(frameNumber == 0 || timeSinceLastFrame >= frameTime)
     {
-        // Calculate the start index for the current frame
-        int startIndex = frameNumber * chunkSize;
-        int endIndex = startIndex + chunkSize;
-
-        // Ensure we don't exceed length of the LED strip
-        if (endIndex > ledcount) {
-            endIndex = ledcount;
-        }
-
-        // Set the current chunk of LEDSs
-        for (int i = startIndex; i < endIndex; i++) {
-            led_strip_set_pixel(ledstrip, i, red, green, blue);
-        }
-
-
-        // Move to the next frame
         frameNumber++;
         lastFrameTime = esp_timer_get_time() / 1000; // Update last frame time
+    }
 
-        // If we've reached the end of the frames, reset to the first frame
-        if (frameNumber >= numFrames) {
-            stop();
-            return false; // Animation completed a full cycle
-        }
+    // Set the current chunk of LEDSs
+    int startIndex = (frameNumber-1) * chunkSize;
+    int endIndex = startIndex + chunkSize;
+    if (endIndex > ledcount) {
+        endIndex = ledcount;
+    }
+
+    for (int i = startIndex; i < endIndex; i++) {
+        set_pixel(i, red, green, blue);
     }
 
     return true;
-
 }
 
 void FuseWave::stop() {
     LedAnimation::stop();
-    ESP_LOGI("FuseWave", "Stopping FuseWave animation ");
+    ESP_LOGI("FuseWave", "Stopping animation ");
 }
