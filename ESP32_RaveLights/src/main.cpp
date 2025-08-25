@@ -165,6 +165,36 @@ void wifi_init_sta(void)
 }
 
 
+/////// MESSSAGE PARSING FUNCTIONs ////
+
+void ProcessMessage(const char *json_str) {
+    // Parse incoming string into a JSON object
+    cJSON *root = cJSON_Parse(json_str);
+    if (root == NULL) {
+        ESP_LOGE("JSON", "Failed to parse JSON");
+        return;
+    }
+
+    // Iterate through all items in the object
+    cJSON *item = root->child;
+    while (item != NULL) {
+        if (cJSON_IsString(item)) {
+            ESP_LOGI("JSON", "%s: %s", item->string, item->valuestring);
+        } else if (cJSON_IsNumber(item)) {
+            ESP_LOGI("JSON", "%s: %f", item->string, item->valuedouble);
+        } else if (cJSON_IsBool(item)) {
+            ESP_LOGI("JSON", "%s: %s", item->string, cJSON_IsTrue(item) ? "true" : "false");
+        } else {
+            ESP_LOGI("JSON", "%s: (unhandled type)", item->string);
+        }
+        item = item->next;
+    }
+
+    // Always free when done
+    cJSON_Delete(root);
+}
+
+
 
 
 ////// Tasks //////
@@ -227,7 +257,8 @@ void tcp_client_task(void *pvParameters)
 
         send(sock, hello, strlen(hello), 0);
 
-        while (1) {
+        while (1) 
+        {
             int len = recv(sock, rx_buffer, sizeof(rx_buffer) - 1, 0);
             if (len < 0) {
                 ESP_LOGE(TAG, "recv failed: errno %d", errno);
@@ -238,12 +269,9 @@ void tcp_client_task(void *pvParameters)
             } else {
                 rx_buffer[len] = 0;
                 ESP_LOGI(TAG, "Received: %s", rx_buffer);
-                // TODO: parse JSON with cJSON here
+                ProcessMessage(rx_buffer);
             }
 
-            // Example: send heartbeat every 5 seconds
-            const char *heartbeat = "{\"id\":\"esp32_1\",\"status\":\"alive\"}\n";
-            send(sock, heartbeat, strlen(heartbeat), 0);
             vTaskDelay(5000 / portTICK_PERIOD_MS);
         }
 
