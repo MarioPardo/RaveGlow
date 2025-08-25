@@ -168,29 +168,49 @@ void wifi_init_sta(void)
 /////// MESSSAGE PARSING FUNCTIONs ////
 
 void ProcessMessage(const char *json_str) {
-    // Parse incoming string into a JSON object
     cJSON *root = cJSON_Parse(json_str);
-    if (root == NULL) {
+    if (!root) {
         ESP_LOGE("JSON", "Failed to parse JSON");
         return;
     }
 
-    // Iterate through all items in the object
-    cJSON *item = root->child;
-    while (item != NULL) {
-        if (cJSON_IsString(item)) {
-            ESP_LOGI("JSON", "%s: %s", item->string, item->valuestring);
-        } else if (cJSON_IsNumber(item)) {
-            ESP_LOGI("JSON", "%s: %f", item->string, item->valuedouble);
-        } else if (cJSON_IsBool(item)) {
-            ESP_LOGI("JSON", "%s: %s", item->string, cJSON_IsTrue(item) ? "true" : "false");
-        } else {
-            ESP_LOGI("JSON", "%s: (unhandled type)", item->string);
-        }
-        item = item->next;
+    cJSON *anim_item = cJSON_GetObjectItem(root, "Animation");
+    if (!anim_item || !cJSON_IsString(anim_item)) {
+        ESP_LOGE("JSON", "Animation field missing or not a string");
+        cJSON_Delete(root);
+        return;
     }
 
-    // Always free when done
+    const char *animation_type = anim_item->valuestring;
+
+    // Handle each animation type
+
+
+    if (strcmp(animation_type, "FuseWave") == 0)        //FuseWave
+    {
+        cJSON *r_item = cJSON_GetObjectItem(root, "r");
+        cJSON *g_item = cJSON_GetObjectItem(root, "g");
+        cJSON *b_item = cJSON_GetObjectItem(root, "b");
+        cJSON *bpm_item = cJSON_GetObjectItem(root, "BPM");
+
+        if (!r_item || !g_item || !b_item || !bpm_item) {
+            ESP_LOGE("JSON", "Missing required parameters for FuseWave");
+        } else {
+            int r = r_item->valueint;
+            int g = g_item->valueint;
+            int b = b_item->valueint;
+            int bpm = bpm_item->valueint;
+
+            ESP_LOGI(TAG, "Creating FuseWave: r=%d g=%d b=%d BPM=%d", r, g, b, bpm);
+            FuseWave* fusewave = new FuseWave(LED_STRIP_BUFFER, LED_STRIP_LENGTH, r, g, b, bpm);
+            xTaskCreate(animation_task, "FuseWaveTask", 2048, fusewave, MAX_ANIM_PRIORITY, NULL);
+        }
+    }
+    else if (strcmp(animation_type, "Blink") == 0)      //Blink
+    {
+        
+    }
+
     cJSON_Delete(root);
 }
 
@@ -271,8 +291,6 @@ void tcp_client_task(void *pvParameters)
                 ESP_LOGI(TAG, "Received: %s", rx_buffer);
                 ProcessMessage(rx_buffer);
             }
-
-            vTaskDelay(5000 / portTICK_PERIOD_MS);
         }
 
         if (sock != -1) {
@@ -306,7 +324,7 @@ void lighting_handler_task(void *pvParameters) {
             }
         }
 
-        vTaskDelay(pdMS_TO_TICKS(10));
+        //vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 

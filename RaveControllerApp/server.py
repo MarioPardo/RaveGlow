@@ -37,15 +37,16 @@ def start_server():
         thread = threading.Thread(target=handle_client, args=(conn, addr))
         thread.start()
         print(f"[ACTIVE CONNECTIONS] {threading.active_count() - 1}")
-
+        
 def broadcast_message(msg_dict):
-    """Send JSON to all connected clients"""
-    data = json.dumps(msg_dict).encode()
+    """Send JSON to all connected clients, each message terminated with newline"""
+    data = (json.dumps(msg_dict) + "\n").encode('utf-8')
     for c in clients:
         try:
             c.sendall(data)
         except:
-            pass  # if client disconnected, ignore
+            pass  # ignore disconnected clients
+
 
 if __name__ == "__main__":
     threading.Thread(target=start_server, daemon=True).start()
@@ -53,5 +54,12 @@ if __name__ == "__main__":
 
     # simple test loop from console
     while True:
-        text = input("Enter message to broadcast: ")
-        broadcast_message({"message": text})
+        input("Enter message to broadcast: ")
+        text={
+            "Animation": "FuseWave",
+            "r": 255,
+            "g": 100,
+            "b": 50,
+            "BPM": 160
+        }
+        broadcast_message(text)
