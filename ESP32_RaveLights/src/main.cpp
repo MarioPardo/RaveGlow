@@ -49,10 +49,11 @@ led_strip_handle_t led_strip = NULL;
 
 
 // WIFI DATA
-#define WIFI_SSID "***"
-#define WIFI_PASSWORD "***"
-#define SERVER_IP "***"
+#define WIFI_SSID "REDACTED"
+#define WIFI_PASSWORD "REDACTED"
+#define SERVER_IP "10.0.0.162"
 #define SERVER_PORT 5000
+char esp32_mac_str[18] = {0}; 
 
 
 //Handling Input for Lighting Commands
@@ -114,12 +115,15 @@ led_strip_handle_t configure_ledstrip(void)
 static void event_handler(void* arg, esp_event_base_t event_base,
                           int32_t event_id, void* event_data)
 {
-    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
+    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) 
+    {
         esp_wifi_connect();
-    } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
+    } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
+    {
         ESP_LOGI(TAG, "Disconnected. Reconnecting...");
         esp_wifi_connect();
-    } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
+    } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) 
+    {
         ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
         ESP_LOGI(TAG, "Got IP:" IPSTR, IP2STR(&event->ip_info.ip));
         // Safe to start TCP client task now
@@ -170,7 +174,7 @@ void input_task(void *pvParameters)
     while (1)
     {
         if (gpio_get_level(BUTTON1_GPIO) == 1) {
-            ESP_LOGI(TAG, "Button 1 pressed");
+            ESP_LOGI(TAG, "Button 1 pressed, Fuse Wave");
             LightingCommand cmd = CMD_FUSE_WAVE;
             xQueueSend(inputQueue, &cmd, portMAX_DELAY);
             vTaskDelay(pdMS_TO_TICKS(200)); 
@@ -216,8 +220,11 @@ void tcp_client_task(void *pvParameters)
 
         ESP_LOGI(TAG, "Connected!");
 
-        // Send initial hello JSON (example)
-        const char *hello = "{\"id\":\"esp32_1\",\"status\":\"online\"}\n";
+        // Send initial hello JSON with MAC address
+        char hello[128];
+        snprintf(hello, sizeof(hello),
+                "{\"id\":\"esp32_%s\",\"status\":\"online\"}\n", esp32_mac_str);
+
         send(sock, hello, strlen(hello), 0);
 
         while (1) {
@@ -365,6 +372,12 @@ void setup()
 
     wifi_init_sta();
 
+    //Store mac address so ESP32 can be identified
+    uint8_t mac[6];
+    esp_wifi_get_mac(WIFI_IF_STA, mac);
+    snprintf(esp32_mac_str, sizeof(esp32_mac_str), "%02X:%02X:%02X:%02X:%02X:%02X",
+             mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    ESP_LOGI(TAG, "ESP32 MAC Address: %s", esp32_mac_str);
 
 
 }
