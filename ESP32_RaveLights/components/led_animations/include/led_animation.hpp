@@ -46,7 +46,6 @@ public:
 
     bool active = false;
     bool started = false;
-    bool hasMultipleFrames;
     float frameTime;
 
 protected:

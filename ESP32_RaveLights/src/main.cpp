@@ -49,8 +49,8 @@ led_strip_handle_t led_strip = NULL;
 
 
 // WIFI DATA
-#define WIFI_SSID "REDACTED"
-#define WIFI_PASSWORD "REDACTED"
+#define WIFI_SSID "***"
+#define WIFI_PASSWORD "***"
 #define SERVER_IP "10.0.0.162"
 #define SERVER_PORT 5000
 char esp32_mac_str[18] = {0}; 
