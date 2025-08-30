@@ -38,7 +38,7 @@ extern "C" {
 #define BUTTON1_GPIO GPIO_NUM_23
 #define BUTTON2_GPIO GPIO_NUM_22
 
-#define LED_STRIP_GPIO GPIO_NUM_18    
+#define LED_STRIP_GPIO GPIO_NUM_19    
 
 //LED Strip
 #define LED_STRIP_USE_DMA  0
