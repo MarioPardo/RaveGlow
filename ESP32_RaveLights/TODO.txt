@@ -1,8 +1,9 @@
 Lighting Control
 [x] Basic writing to LED strip
 [x] Basic Animation task class
-    - Triggered by button
-    - Blink
+    [x] Triggered by button
+    [] Blink
+
 [x] Animation task child classes
     - Non blocking
     - get fuseWave working 
@@ -17,10 +18,9 @@ Keyboard control of functions
 
 
 Bluetooth
-[ ] Computer sends simple message
-[ ] ESP32 can send message back and identify itself
-[ ] send commands through bluetooth
-
+[X] Computer sends simple message
+[X] ESP32 can send message back and identify itself
+[X] send commands through bluetooth
 
 General
 [x] Use proper RTOS task structure
