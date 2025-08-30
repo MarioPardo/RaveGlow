@@ -54,6 +54,7 @@ protected:
     uint32_t ledcount;
     float startTime = 0;  // Start time in milliseconds
     float beatTime; // Time per beat in milliseconds
+    float beatPercentage; //percentage of beat time we want anim to last. ie 0.5 = half beat
     uint32_t numFrames;
     uint32_t frameNumber = 0; // Frame number for animations that have multiple frames
     float lastFrameTime = 0;

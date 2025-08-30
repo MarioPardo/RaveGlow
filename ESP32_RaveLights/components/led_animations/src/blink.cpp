@@ -1,14 +1,14 @@
 #include "blink.hpp"
 
-Blink::FuseWave(pixel_t* ledstrip_buffer, uint32_t length, uint8_t r, uint8_t g, uint8_t b, uint32_t BPM)
+Blink::Blink(pixel_t* ledstrip_buffer, uint32_t length, uint8_t r, uint8_t g, uint8_t b, uint32_t BPM, float beatPercentage)
     : LedAnimation(ledstrip_buffer, length)
 {
- 
+ this->beatPercentage = beatPercentage;
 }
 
 void Blink::start() 
 {
-   LedAnimation::start() 
+   LedAnimation::start();
 
 }
 

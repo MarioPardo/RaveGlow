@@ -50,8 +50,8 @@ led_strip_handle_t led_strip = NULL;
 
 // WIFI DATA
 
-#define WIFI_SSID "***"
-#define WIFI_PASSWORD "***"
+#define WIFI_SSID "REDACTED"
+#define WIFI_PASSWORD "REDACTED"
 #define SERVER_IP "10.0.0.162"
 #define SERVER_PORT 5000
 char esp32_mac_str[18] = {0}; 
@@ -193,17 +193,20 @@ void ProcessMessage(const char *json_str) {
         cJSON *g_item = cJSON_GetObjectItem(root, "g");
         cJSON *b_item = cJSON_GetObjectItem(root, "b");
         cJSON *bpm_item = cJSON_GetObjectItem(root, "BPM");
+        cJSON *beatPercent_item = cJSON_GetObjectItem(root, "beatPercentage");
 
-        if (!r_item || !g_item || !b_item || !bpm_item) {
+        if (!r_item || !g_item || !b_item || !bpm_item || !beatPercent_item) {
             ESP_LOGE("JSON", "Missing required parameters for FuseWave");
         } else {
             int r = r_item->valueint;
             int g = g_item->valueint;
             int b = b_item->valueint;
             int bpm = bpm_item->valueint;
+            float beatPercentage = beatPercent_item->valuedouble;
+
 
             ESP_LOGI(TAG, "Creating FuseWave: r=%d g=%d b=%d BPM=%d", r, g, b, bpm);
-            FuseWave* fusewave = new FuseWave(LED_STRIP_BUFFER, LED_STRIP_LENGTH, r, g, b, bpm);
+            FuseWave* fusewave = new FuseWave(LED_STRIP_BUFFER, LED_STRIP_LENGTH, r, g, b, bpm, beatPercentage);
             xTaskCreate(animation_task, "FuseWaveTask", 2048, fusewave, MAX_ANIM_PRIORITY, NULL);
         }
     }
@@ -312,7 +315,7 @@ void lighting_handler_task(void *pvParameters) {
             switch (cmd) {
                 case CMD_FUSE_WAVE: {
                     ESP_LOGI(TAG, "Creating fusewave");
-                    FuseWave* fusewave = new FuseWave(LED_STRIP_BUFFER,LED_STRIP_LENGTH, 255, 255, 255, 160);
+                    FuseWave* fusewave = new FuseWave(LED_STRIP_BUFFER,LED_STRIP_LENGTH, 255, 255, 255, 152, 0.5);
                     xTaskCreate(animation_task, "FuseWaveTask", 2048, fusewave, MAX_ANIM_PRIORITY, NULL);
                     break;
                 }

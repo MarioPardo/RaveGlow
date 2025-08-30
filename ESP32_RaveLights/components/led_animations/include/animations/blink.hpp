@@ -9,7 +9,7 @@ extern "C" {
 
 class Blink: public LedAnimation {
 public:
-    Blink(pixel_t* ledstrip_buffer, uint32_t length, uint8_t r, uint8_t g, uint8_t b, uint32_t BPM);
+    Blink(pixel_t* ledstrip_buffer, uint32_t length, uint8_t r, uint8_t g, uint8_t b, uint32_t BPM, float beatPercentage);
 
     void start() override;
     bool act_frame() override;
