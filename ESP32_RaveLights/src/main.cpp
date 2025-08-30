@@ -241,7 +241,7 @@ void input_task(void *pvParameters)
             vTaskDelay(pdMS_TO_TICKS(100));
         }
 
-        vTaskDelay(pdMS_TO_TICKS(10));
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
 

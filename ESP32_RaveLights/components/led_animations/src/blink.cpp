@@ -24,8 +24,13 @@ Blink::Blink(pixel_t* ledstrip_buffer, uint32_t length, uint8_t r, uint8_t g, ui
 void Blink::start() 
 {
    LedAnimation::start();
-   this->frameNumber = 0;
 
+   for(int i = 0; i < ledcount; i++)
+    {
+        set_pixel(i, red, green, blue);
+    }
+
+   this->lastFrameTime = esp_timer_get_time() / 1000;
 }
 
 bool Blink::act_frame() 
@@ -35,22 +40,9 @@ bool Blink::act_frame()
         return false;
 
 
-    //Turn on if it's first frame
-    if(frameNumber == 0)
-    {
-        // Set all pixels to the specified color
-        for(int i = 0; i < ledcount; i++)
-        {
-            set_pixel(i, red, green, blue);
-        }
-
-        lastFrameTime = esp_timer_get_time() / 1000;
-        frameNumber++;
-        return true;
-    }
+    float timeSinceLastFrame = (esp_timer_get_time() / 1000) - lastFrameTime;
 
     //Turn off if time to do so
-    float timeSinceLastFrame = (esp_timer_get_time() / 1000) - lastFrameTime;
     if( timeSinceLastFrame >= duration)
     {
         for(int i = 0; i < ledcount; i++)
