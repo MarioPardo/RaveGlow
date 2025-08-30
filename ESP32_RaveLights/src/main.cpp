@@ -29,10 +29,10 @@ extern "C" {
 }
 
 
-
+// Animations
 #include "led_animation.hpp"
 #include "animations/fuse_wave.hpp"
-
+#include "animations/blink.hpp"
 
 // GPIO Definitions
 #define BUTTON1_GPIO GPIO_NUM_23
@@ -231,14 +231,14 @@ void input_task(void *pvParameters)
             ESP_LOGI(TAG, "Button 1 pressed, Fuse Wave");
             LightingCommand cmd = CMD_FUSE_WAVE;
             xQueueSend(inputQueue, &cmd, portMAX_DELAY);
-            vTaskDelay(pdMS_TO_TICKS(200)); 
+            vTaskDelay(pdMS_TO_TICKS(100)); 
         }
 
         if (gpio_get_level(BUTTON2_GPIO) == 1) {
             ESP_LOGI(TAG, "Button 2 pressed, Blink");
             LightingCommand cmd = CMD_BLINK_LEDS;
             xQueueSend(inputQueue, &cmd, portMAX_DELAY);
-            vTaskDelay(pdMS_TO_TICKS(200));
+            vTaskDelay(pdMS_TO_TICKS(100));
         }
 
         vTaskDelay(pdMS_TO_TICKS(10));
@@ -319,9 +319,12 @@ void lighting_handler_task(void *pvParameters) {
                     xTaskCreate(animation_task, "FuseWaveTask", 2048, fusewave, MAX_ANIM_PRIORITY, NULL);
                     break;
                 }
-                case CMD_BLINK_LEDS:
+                case CMD_BLINK_LEDS: {
                     ESP_LOGI(TAG, "Blinking LEDs");
+                    Blink* blink = new Blink(LED_STRIP_BUFFER, LED_STRIP_LENGTH, 255, 0, 0, 152, 2);
+                    xTaskCreate(animation_task, "BlinkTask", 2048, blink, MAX_ANIM_PRIORITY, NULL);
                     break;
+                }
                 default:
                     ESP_LOGW(TAG, "Unknown command received");
                     break;
@@ -376,12 +379,9 @@ void animation_task(void *pvParameters) {
             } else
                 ESP_LOGW("AnimationTask", "Failed to take LED strip mutex");
             
-            vTaskDelay(pdMS_TO_TICKS(10));
         }
         else
-        {
             vTaskDelete(NULL);
-        }
     }
 }
 

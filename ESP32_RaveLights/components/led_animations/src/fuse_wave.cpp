@@ -15,8 +15,7 @@ FuseWave::FuseWave(pixel_t* ledstrip_buffer, uint32_t length, uint8_t r, uint8_t
     this->red = r;
     this->green = g;
     this->blue = b;
-
-    this->hasMultipleFrames = true;   
+ 
     this->beatPercentage = beatPercentage  ; 
 
     this->beatTime = 60000 / BPM; // Convert BPM to milliseconds per beat

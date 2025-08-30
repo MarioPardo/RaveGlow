@@ -46,7 +46,6 @@ public:
 
     bool active = false;
     bool started = false;
-    bool hasMultipleFrames;
     float frameTime;
 
 protected:
@@ -55,6 +54,7 @@ protected:
     float startTime = 0;  // Start time in milliseconds
     float beatTime; // Time per beat in milliseconds
     float beatPercentage; //percentage of beat time we want anim to last. ie 0.5 = half beat
+    float duration; // Duration of the animation in milliseconds
     uint32_t numFrames;
     uint32_t frameNumber = 0; // Frame number for animations that have multiple frames
     float lastFrameTime = 0;
