@@ -60,6 +60,7 @@ if __name__ == "__main__":
             "r": 255,
             "g": 100,
             "b": 50,
-            "BPM": 160
+            "BPM": 160,
+            "beatPercentage": 0.5
         }
         broadcast_message(text)
