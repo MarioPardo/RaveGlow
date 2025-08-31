@@ -1,0 +1,14 @@
+{
+    "j": [
+        {
+            "name": "WhiteBlink",
+            "Animation": "FuseWave",
+            "r": 255,
+            "g": 0,
+            "b": 0,
+            "BPM": 152,
+            "beatPercentage": 0.75,
+            "chunkSize": 5
+        }
+    ]
+}
