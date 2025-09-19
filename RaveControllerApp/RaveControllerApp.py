@@ -85,6 +85,7 @@ def display_menu():
         print("2. Create New Key Mapping")
         print("3. Manually Set up Server Info")
         print("4. Start Manual Rave Controller")
+        print("5. Start BPM-based Automatic Rave Controller")
         print("9. Exit")
 
         user_input = input("Please Enter your Choice ")
@@ -98,6 +99,9 @@ def display_menu():
         elif user_input == "4":
             threading.Thread(target=server.start_server, daemon=True).start()
             run_manual_controller()
+        elif user_input == "5":
+            #threading.Thread(target=server.start_server, daemon=True).start()
+            run_bpm_based_automatic()
         elif user_input == "9":
             print("Exiting...")
             break
