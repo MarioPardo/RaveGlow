@@ -62,11 +62,17 @@ def create_new_mapping():
 
     key = input("Enter key to bind animation to: ")
 
-    #TODO check if this key is already bound to
+    if key in key_animation_mappings:
+        overwrite = input(f"Key '{key}' is already mapped. Overwrite? (y/n): ")
+        if overwrite.lower() != 'y':
+            print("Aborting mapping creation.")
+            return
 
     schema = animation_handler.create_new_animation()
 
-    #TODO check if schema is valid
+    if schema is None:
+        print("No animation created. Aborting mapping.")
+        return
 
     key_animation_mappings[key] = schema
     animation_handler.append_schema(key,schema)
@@ -93,7 +99,7 @@ def display_menu():
         print("1. Display Key Mappings")
         print("2. Create New Key Mapping")
         print("3. Manually Set up Server Info")
-        print("4. Start Rave Controller")
+        print("4. Start Manual Rave Controller")
         print("9. Exit")
 
         user_input = input("Please Enter your Choice ")
@@ -106,7 +112,7 @@ def display_menu():
             server.manually_setup_server()
         elif user_input == "4":
             threading.Thread(target=server.start_server, daemon=True).start()
-            run_controller()
+            run_manual_controller()
         elif user_input == "9":
             print("Exiting...")
             break
@@ -119,7 +125,7 @@ def display_menu():
 ##### CONTROLLER #################
 ##################################
 
-def run_controller():
+def run_manual_controller():
     print("Controller running. Press mapped keys to trigger animations. Press ESC to exit.")
 
     def on_press(key):
