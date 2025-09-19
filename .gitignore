@@ -1,6 +1,7 @@
 *.mp3
 /__pycache__/
 Visualizer/venv/
+RaveControllerApp/venv/
 get-pip.py
 
 # Compiled object files and build directory

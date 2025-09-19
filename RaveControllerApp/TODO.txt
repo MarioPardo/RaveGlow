@@ -1,0 +1,18 @@
+
+
+ --- GUI -----
+ [] Basic GUI Showing Keyboard
+    - [] Show Mapped Keys
+    - [] Show when keys pressed
+
+ [] - Stored Animations
+ [] - Drag n Drop animations to keys
+
+
+ --Functionality
+ 
+ [] Automatic @ Some BPM
+  - [] Manually set 1st beat for timing
+  - [] Show music beat counter
+  - [] Set color scheme
+  
