@@ -155,6 +155,8 @@ def run_bpm_based_automatic():
         #necessary bpm calculations for timing
 
     #Ask for color scheme, two colors
+        #colors available are in animation_handler.py in a var called available_colors
+        #but also give option to enter custom rgb values
 
     #Ask for animations to cycle through
         #available animation are in animation_handler.py in a var called available_animations
