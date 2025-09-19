@@ -1,12 +1,10 @@
-
-
-
 import server
 import animation_handler
 import socket
 import json
-from pynput import keyboard
 import threading
+import time
+from pynput import keyboard
 
 
 animation_keys = [] #list of keys that are mapped to animations
@@ -148,42 +146,252 @@ def run_manual_controller():
 
 
 def run_bpm_based_automatic():
+    def prompt_bpm():
+        while True:
+            bpm_input = input("Enter target BPM: ").strip()
+            try:
+                bpm_value = float(bpm_input)
+                if bpm_value <= 0:
+                    raise ValueError
+                return bpm_value
+            except ValueError:
+                print("Invalid BPM. Please enter a positive number.")
 
-    #Prompt for Bpm
-        #TODOLATER: Tool for finding BPM given keyboard input
+    def prompt_color(label):
+        available_colors = animation_handler.colors_rgb
+        color_names = list(available_colors.keys())
+        print(f"\nSelect the {label} color:")
+        for idx, name in enumerate(color_names, start=1):
+            rgb = available_colors[name]
+            print(f"  {idx}. {name} ({rgb[0]}, {rgb[1]}, {rgb[2]})")
+        print("  C. Custom RGB value")
 
-        #necessary bpm calculations for timing
+        while True:
+            choice = input("Enter name, number, or 'C' for custom: ").strip().lower()
+            if not choice:
+                print("Please enter a choice.")
+                continue
 
-    #Ask for color scheme, two colors
-        #colors available are in animation_handler.py in a var called available_colors
-        #but also give option to enter custom rgb values
+            if choice == 'c' or choice == 'custom':
+                def prompt_rgb(channel):
+                    while True:
+                        value = input(f"Enter {channel} value (0-255): ").strip()
+                        try:
+                            value_int = int(value)
+                            if 0 <= value_int <= 255:
+                                return value_int
+                        except ValueError:
+                            pass
+                        print("Invalid value. Please enter an integer between 0 and 255.")
 
-    #Ask for animations to cycle through
-        #available animation are in animation_handler.py in a var called available_animations
-        #Cycling will be: color changes every beat 
+                r = prompt_rgb("red")
+                g = prompt_rgb("green")
+                b = prompt_rgb("blue")
+                color_label = f"custom({r},{g},{b})"
+                return {"name": color_label, "rgb": (r, g, b)}
 
-    #Then use create_temp_anim_from_default from animation_handler.py to create a temp animation based on the defaults
-    #this is what will be sent to the clients
+            if choice.isdigit():
+                idx = int(choice)
+                if 1 <= idx <= len(color_names):
+                    name = color_names[idx - 1]
+                    return {"name": name, "rgb": available_colors[name]}
+                print("Number out of range. Try again.")
+                continue
 
-    #Ask how for change every how many phrases
+            if choice in available_colors:
+                return {"name": choice, "rgb": available_colors[choice]}
 
+            print("Invalid choice. Please try again.")
 
-    #initialize variables
+    def prompt_animations():
+        available = animation_handler.available_animations
+        print("\nAvailable animations:")
+        for idx, name in enumerate(available, start=1):
+            print(f"  {idx}. {name}")
 
-    #start server using:   threading.Thread(target=server.start_server, daemon=True).start()
-    #send commands just like in the manual controller, but based on timing
+        while True:
+            raw = input("Enter animations to cycle (comma separated names or numbers): ").strip()
+            if not raw:
+                print("Please select at least one animation.")
+                continue
 
+            selections = [item.strip() for item in raw.split(',') if item.strip()]
+            chosen = []
+            valid = True
+            for entry in selections:
+                if entry.isdigit():
+                    idx = int(entry)
+                    if 1 <= idx <= len(available):
+                        chosen.append(available[idx - 1])
+                        continue
+                    valid = False
+                    break
+                if entry in available:
+                    chosen.append(entry)
+                else:
+                    valid = False
+                    break
 
-    #Prompt user to ask to start using spacebar, use this for timing
-        
-        #Start loop in thread
-        #Anytime spacebar is pressed, use this to reset the "one bar"
+            if valid and chosen:
+                return chosen
 
-        #On every beat, update the beat counter display.
-        #Display is [] [] : animationName  where [][] are the digits noting the bar and beat. 4 beats per bar, 8 bars per phrase
+            print("Invalid selection. Try again using the provided names or numbers.")
 
-        #exit when ctrl + c is pressed
+    def prompt_phrase_interval():
+        while True:
+            response = input("Change animation every how many phrases? (0 to keep current animation): ").strip()
+            if response == "":
+                return 1
+            try:
+                value = int(response)
+                if value < 0:
+                    raise ValueError
+                return value
+            except ValueError:
+                print("Please enter a non-negative integer.")
 
+    bpm_value = prompt_bpm()
+    beat_duration = 60.0 / bpm_value
+    animation_bpm = int(round(bpm_value))
+
+    first_color = prompt_color("first")
+    second_color = prompt_color("second")
+    colors = [first_color, second_color]
+
+    selected_animations = prompt_animations()
+    if not selected_animations:
+        print("No animations selected. Exiting automatic controller.")
+        return
+
+    phrases_per_animation = prompt_phrase_interval()
+
+    print("\nStarting BPM-based automatic controller.")
+    print("Press SPACE to start or resync the beat. Press ESC to stop. Press Ctrl+C to exit.")
+
+    threading.Thread(target=server.start_server, daemon=True).start()
+
+    start_event = threading.Event()
+    reset_event = threading.Event()
+    stop_event = threading.Event()
+
+    beats_per_bar = 4
+    bars_per_phrase = 8
+
+    animation_index = 0
+    phrases_for_current_animation = 0
+    total_phrases = 0
+    total_beats = 0
+    beat_in_bar = 0
+    bar_in_phrase = 1
+    color_index = -1
+
+    def beat_loop():
+        nonlocal animation_index, phrases_for_current_animation
+        nonlocal total_phrases, total_beats, beat_in_bar, bar_in_phrase, color_index
+
+        next_beat_time = None
+        started = False
+
+        while not stop_event.is_set():
+            start_event.wait()
+            if stop_event.is_set():
+                break
+
+            if reset_event.is_set() or not started:
+                reset_event.clear()
+                started = True
+                next_beat_time = time.time()
+                beat_in_bar = 0
+                bar_in_phrase = 1
+                color_index = -1
+
+            if next_beat_time is None:
+                next_beat_time = time.time()
+
+            sleep_time = next_beat_time - time.time()
+            if sleep_time > 0:
+                time.sleep(min(sleep_time, 0.05))
+                continue
+
+            beat_in_bar += 1
+            if beat_in_bar > beats_per_bar:
+                beat_in_bar = 1
+                bar_in_phrase += 1
+                if bar_in_phrase > bars_per_phrase:
+                    bar_in_phrase = 1
+                    total_phrases += 1
+                    if phrases_per_animation > 0:
+                        phrases_for_current_animation += 1
+                        if phrases_for_current_animation >= phrases_per_animation:
+                            phrases_for_current_animation = 0
+                            animation_index = (animation_index + 1) % len(selected_animations)
+
+            color_index = (color_index + 1) % len(colors)
+            total_beats += 1
+
+            current_animation = selected_animations[animation_index]
+            color = colors[color_index]
+
+            schema = animation_handler.create_temp_anim_from_default(
+                current_animation,
+                f"Auto_{current_animation}_{total_beats}",
+                color["rgb"][0],
+                color["rgb"][1],
+                color["rgb"][2],
+                animation_bpm,
+                0,
+            )
+
+            if schema is None:
+                print(f"Unable to create default animation for '{current_animation}'. Stopping controller.")
+                stop_event.set()
+                start_event.set()
+                break
+
+            try:
+                server.broadcast_message(schema)
+            except Exception as exc:
+                print(f"Failed to broadcast animation '{current_animation}': {exc}")
+
+            print(f"[{bar_in_phrase}][{beat_in_bar}] : {current_animation} ({color['name']})")
+
+            next_beat_time += beat_duration
+
+        print("Automatic BPM controller loop stopped.")
+
+    beat_thread = threading.Thread(target=beat_loop, daemon=True)
+    beat_thread.start()
+
+    def on_press(key):
+        if key == keyboard.Key.space:
+            if not start_event.is_set():
+                print("Beat tracking started.")
+            else:
+                print("Resyncing beat to spacebar press.")
+            reset_event.set()
+            start_event.set()
+        elif key == keyboard.Key.esc:
+            print("ESC pressed. Stopping automatic controller.")
+            stop_event.set()
+            start_event.set()
+            return False
+
+    listener = keyboard.Listener(on_press=on_press)
+    listener.start()
+
+    try:
+        while listener.is_alive() and not stop_event.is_set():
+            time.sleep(0.1)
+    except KeyboardInterrupt:
+        print("Keyboard interrupt received. Stopping automatic controller.")
+        stop_event.set()
+        start_event.set()
+    finally:
+        listener.stop()
+        listener.join()
+        stop_event.set()
+        start_event.set()
+        beat_thread.join()
 
     return
 
