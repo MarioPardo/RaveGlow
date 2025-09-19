@@ -12,19 +12,6 @@ import threading
 animation_keys = [] #list of keys that are mapped to animations
 key_animation_mappings = {} #map keys : animation json
 
-colors_rgb = {
-    "white": (255, 255, 255),
-    "red": (255, 0, 0),
-    "green": (0, 255, 0),
-    "blue": (0, 0, 255),
-    "cyan": (0, 255, 255),
-    "magenta": (255, 0, 255),
-    "purple": (128, 0, 128),
-    "orange": (255, 165, 0),
-    "light_blue": (173, 216, 230),
-    "light_green": (144, 238, 144)
-}
-
 
 
 def load_key_mappings():
@@ -157,6 +144,46 @@ def run_manual_controller():
     # Start listener (blocking)
     with keyboard.Listener(on_press=on_press, on_release=on_release) as listener:
         listener.join()
+
+
+
+def run_bpm_based_automatic():
+
+    #Prompt for Bpm
+        #TODOLATER: Tool for finding BPM given keyboard input
+
+        #necessary bpm calculations for timing
+
+    #Ask for color scheme, two colors
+
+    #Ask for animations to cycle through
+        #available animation are in animation_handler.py in a var called available_animations
+        #Cycling will be: color changes every beat 
+
+    #Then use create_temp_anim_from_default from animation_handler.py to create a temp animation based on the defaults
+    #this is what will be sent to the clients
+
+    #Ask how for change every how many phrases
+
+
+    #initialize variables
+
+    #start server using:   threading.Thread(target=server.start_server, daemon=True).start()
+    #send commands just like in the manual controller, but based on timing
+
+
+    #Prompt user to ask to start using spacebar, use this for timing
+        
+        #Start loop in thread
+        #Anytime spacebar is pressed, use this to reset the "one bar"
+
+        #On every beat, update the beat counter display.
+        #Display is [] [] : animationName  where [][] are the digits noting the bar and beat. 4 beats per bar, 8 bars per phrase
+
+        #exit when ctrl + c is pressed
+
+
+    return
 
 
 

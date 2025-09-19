@@ -7,6 +7,27 @@ import json
 from pathlib import Path
 
 
+
+available_animations = [
+    "Blink",
+    "FuseWave"
+]
+
+colors_rgb = {
+    "white": (255, 255, 255),
+    "red": (255, 0, 0),
+    "green": (0, 255, 0),
+    "blue": (0, 0, 255),
+    "cyan": (0, 255, 255),
+    "magenta": (255, 0, 255),
+    "purple": (128, 0, 128),
+    "orange": (255, 165, 0),
+    "light_blue": (173, 216, 230),
+    "light_green": (144, 238, 144)
+}
+
+
+
 ###JSON functions
 #################
 
@@ -67,6 +88,8 @@ def parse_json_entries():
 
 
 
+
+
 ######
 
 def create_new_animation():
@@ -86,6 +109,30 @@ def create_new_animation():
 
 
     return schema
+
+def create_temp_anim_from_default(anim_name,temp_name, r, g, b, bpm, beat_percentage):
+    """
+    Looks in the json file for an animation called Default{anim_name},
+    modifies it with the new parameters and returns the json for it.
+    """
+    key = f"Default{anim_name}"
+    data = load_json()
+    if key not in data or not data[key]:
+        print(f"No default animation found for '{key}'")
+        return None
+
+    # Take the first schema for this key
+    schema = data[key][0].copy()
+    schema.update({
+        "name": temp_name,
+        "r": r,
+        "g": g,
+        "b": b,
+        "BPM": bpm,
+        "beatPercentage": beat_percentage
+    })
+    return schema
+
 
 
 def prompt_default():

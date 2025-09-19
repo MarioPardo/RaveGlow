@@ -11,14 +11,39 @@
             "chunkSize": 5
         }
     ],
-    "f": [
+     "f": [
         {
-            "name": "blue blink",
+            "name": "BlueBlink",
             "Animation": "Blink",
             "r": 30,
             "g": 30,
             "b": 255,
             "BPM": 152,
+            "beatPercentage": 1.5
+        }
+    ], 
+
+
+    
+    "DefaultBlink": [
+        {
+            "name": "DefaultBlink",
+            "Animation": "Blink",
+            "r": 255,
+            "g": 255,
+            "b": 255,
+            "BPM": 150,
+            "beatPercentage": 1.5
+        }
+    ],
+    "DefaultFuseWave": [
+        {
+            "name": "DefaultFuseWave",
+            "Animation": "FuseWave",
+            "r": 255,
+            "g": 255,
+            "b": 255,
+            "BPM": 150,
             "beatPercentage": 1.5
         }
     ]
