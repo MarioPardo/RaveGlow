@@ -4,6 +4,9 @@
 import server
 import animation_handler
 import socket
+import json
+from pynput import keyboard
+import threading
 
 
 animation_keys = [] #list of keys that are mapped to animations
@@ -26,6 +29,7 @@ colors_rgb = {
 
 def load_key_mappings():
     """Load key to animation mappings from JSON file."""
+    global key_animation_mappings
     key_animation_mappings = animation_handler.parse_json_entries()
 
     return
@@ -36,8 +40,21 @@ def load_key_mappings():
 ###### MAIN MENU###########
 ###########################
 def display_current_mappings():
+    """Display current key to animation mappings."""
 
-    pass
+    for key,value in key_animation_mappings.items():
+        print("\n")
+        print(f"Key: {key}")
+        try:
+            animation_data = json.loads(value)
+            for entry_key, entry_value in animation_data.items():
+                print(f"\t{entry_key}: {entry_value}")
+        except Exception as e:
+            print(f"\tError parsing animation JSON: {e}")
+
+    
+    return
+    
 
 
 
@@ -66,11 +83,19 @@ def display_menu():
     print("Command Line Menu:")
     print("1. Display Key Mappings")
     print("2. Create New Key Mapping")
-    print("3. Start Server")
-    print("4. Exit")
+    print("3. Start Rave Controller")
+    print("9. Exit")
 
 
     while True:
+
+        print()
+        print("1. Display Key Mappings")
+        print("2. Create New Key Mapping")
+        print("3. Manually Set up Server Info")
+        print("4. Start Rave Controller")
+        print("9. Exit")
+
         user_input = input("Please Enter your Choice ")
 
         if user_input == "1":
@@ -78,8 +103,11 @@ def display_menu():
         elif user_input == "2":
             create_new_mapping()
         elif user_input == "3":
-            server.start_server()
+            server.manually_setup_server()
         elif user_input == "4":
+            threading.Thread(target=server.start_server, daemon=True).start()
+            run_controller()
+        elif user_input == "9":
             print("Exiting...")
             break
         else:
@@ -92,17 +120,37 @@ def display_menu():
 ##################################
 
 def run_controller():
+    print("Controller running. Press mapped keys to trigger animations. Press ESC to exit.")
 
-    #Continuously read keyboard
+    def on_press(key):
+        try:
+            # Convert key to string name if possible
+            key_name = key.char if hasattr(key, 'char') else str(key).split('.')[-1]
 
-    #If key input has binding
+            if key_name == 'esc':
+                print("Exiting controller...")
+                return False  # stops the listener
 
-        #print animation name
-        #send json to server to send
+            if key_name in key_animation_mappings:
+                try:
+                    animation_data = json.loads(key_animation_mappings[key_name])
+                    animation_name = animation_data.get("name", "Unknown")
+                    print(f"Triggered animation: {animation_name}")
+                    server.broadcast_message(key_animation_mappings[key_name])
+                except Exception as e:
+                    print(f"Error handling animation for key '{key_name}': {e}")
 
+        except AttributeError:
+            # Special keys without 'char' attribute are ignored here
+            pass
 
+    def on_release(key):
+        # Optional: handle key release if needed
+        pass
 
-    pass
+    # Start listener (blocking)
+    with keyboard.Listener(on_press=on_press, on_release=on_release) as listener:
+        listener.join()
 
 
 
@@ -115,24 +163,8 @@ if __name__ == "__main__":
     # Welcome Menu
     print("Welcome to the Rave Controller App!")
 
-    # Display current IP address
-    hostname = socket.gethostname()
-    ip_address = socket.gethostbyname(hostname)
-    print(f"Current IP address: {ip_address}")
-
-    # Prompt for which port to use, default to 5000
-    port_input = input("Enter port to use (default 5000): ")
-    try:
-        port = int(port_input) if port_input.strip() else 5000
-    except ValueError:
-        print("Invalid port. Using default 5000.")
-        port = 5000
-    print(f"Using port: {port}")
-
-
     #Set things up
     load_key_mappings()
-
 
 
     #Display Menu

@@ -10,5 +10,16 @@
             "beatPercentage": 0.75,
             "chunkSize": 5
         }
+    ],
+    "f": [
+        {
+            "name": "blue blink",
+            "Animation": "Blink",
+            "r": 30,
+            "g": 30,
+            "b": 255,
+            "BPM": 152,
+            "beatPercentage": 1.5
+        }
     ]
 }

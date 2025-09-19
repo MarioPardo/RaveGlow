@@ -50,16 +50,16 @@ def append_schema(key: str, schema: dict):
 
 
 def parse_json_entries():
-    """Read the JSON and print every entry in order."""
+    """
+    Read the JSON and return a dict where each key is a single char (key),
+    and the value is a string containing all the JSON schemas for that key.
+    """
     data = load_json()
     entries = {}
     for key, schemas in data.items():
-        entries[key] = schemas
-        print(f"Key: {key}")
-        for i, schema in enumerate(schemas):
-            print(f"  Entry {i+1}:")
-            print(json.dumps(schema, indent=4))
-
+        # Combine all schemas for this key into a single pretty-printed string
+        json_str = "\n".join(json.dumps(schema, indent=4) for schema in schemas)
+        entries[key] = json_str
     return entries
 
 
