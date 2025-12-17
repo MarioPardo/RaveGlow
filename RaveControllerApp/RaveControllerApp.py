@@ -131,7 +131,8 @@ def run_manual_controller():
                     animation_data = json.loads(key_animation_mappings[key_name])
                     animation_name = animation_data.get("name", "Unknown")
                     print(f"Triggered animation: {animation_name}")
-                    server.broadcast_message(key_animation_mappings[key_name])
+                    print("Sending Payload:", repr(animation_data))
+                    server.broadcast_message(animation_data)
                 except Exception as e:
                     print(f"Error handling animation for key '{key_name}': {e}")
 
@@ -280,6 +281,7 @@ def run_bpm_based_automatic():
 
     beats_per_bar = 4
     bars_per_phrase = 8
+    beat_percentage = 1.5
 
     animation_index = 0
     phrases_for_current_animation = 0
@@ -343,7 +345,7 @@ def run_bpm_based_automatic():
                 color["rgb"][1],
                 color["rgb"][2],
                 animation_bpm,
-                0,
+                beat_percentage
             )
 
             if schema is None:

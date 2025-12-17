@@ -1,7 +1,7 @@
 {
     "j": [
         {
-            "name": "WhiteBlink",
+            "name": "WhiteFuse",
             "Animation": "FuseWave",
             "r": 255,
             "g": 0,
@@ -22,8 +22,6 @@
             "beatPercentage": 1.5
         }
     ], 
-
-
     
     "DefaultBlink": [
         {
@@ -44,7 +42,8 @@
             "g": 255,
             "b": 255,
             "BPM": 150,
-            "beatPercentage": 1.5
+            "beatPercentage": 1.5,
+            "chunkSize": 5
         }
     ]
 }
