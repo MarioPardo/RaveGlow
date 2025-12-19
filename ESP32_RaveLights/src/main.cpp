@@ -50,8 +50,8 @@ led_strip_handle_t led_strip = NULL;
 
 // WIFI DATA
 #include "credientials.h"  //create file in same dictory as this file
-#define SERVER_IP "10.0.0.162"
-#define SERVER_PORT 5000
+#define SERVER_IP "10.0.0.29"
+#define SERVER_PORT 6000
 char esp32_mac_str[18] = {0}; 
 
 
@@ -67,6 +67,15 @@ typedef enum {
 QueueHandle_t inputQueue;
 SemaphoreHandle_t led_strip_mutex = NULL;
 pixel_t LED_STRIP_BUFFER[LED_STRIP_LENGTH] = {};  //init to all 0
+
+
+
+//// DATA VARIABLES
+
+int BPM = 128;  //default BPM
+
+
+////
 
 
 
@@ -246,7 +255,7 @@ void input_task(void *pvParameters)
 
 void tcp_client_task(void *pvParameters)
 {
-    char rx_buffer[128];
+    char rx_buffer[256];
 
     while (1) {
         struct sockaddr_in dest_addr;

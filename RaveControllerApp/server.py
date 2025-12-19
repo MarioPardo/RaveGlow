@@ -3,7 +3,7 @@ import threading
 import json
 
 HOST = "0.0.0.0"   # listen on all interfaces
-PORT = 5000        # pick any free port
+PORT = 6000        # pick any free port
 
 ip_address = None
 
@@ -12,16 +12,21 @@ clients = []  # keep track of connected clients
 def handle_client(conn, addr):
     print(f"[NEW CONNECTION] {addr} connected.")
     clients.append(conn)
+    buffer = ""
     try:
         while True:
             data = conn.recv(1024)
             if not data:
                 break
-            try:
-                msg = json.loads(data.decode())
-                print(f"[RECEIVED from {addr}] {msg}")
-            except json.JSONDecodeError:
-                print(f"[RECEIVED raw from {addr}] {data.decode()}")
+            buffer += data.decode()
+            while '\n' in buffer:
+                line, buffer = buffer.split('\n', 1)
+                if line.strip():
+                    try:
+                        msg = json.loads(line)
+                        print(f"[RECEIVED from {addr}] {msg}")
+                    except json.JSONDecodeError as e:
+                        print(f"[JSON ERROR from {addr}] {e}: {line}")
     except ConnectionResetError:
         print(f"[DISCONNECTED] {addr}")
     finally:
@@ -43,7 +48,7 @@ def manually_setup_server():
         PORT = int(port_input) if port_input.strip() else 5000
     except ValueError:
         print("Invalid port. Using default 5000.")
-        PORT = 5000
+        PORT = 6000
     print(f"Using port: {PORT}")
 
 
@@ -54,6 +59,7 @@ def start_server():
     ip_address = socket.gethostbyname(hostname)
 
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server.bind((HOST, PORT))
     server.listen()
 
