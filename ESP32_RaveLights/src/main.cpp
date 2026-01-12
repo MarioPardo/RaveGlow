@@ -38,7 +38,7 @@ extern "C" {
 #define BUTTON1_GPIO GPIO_NUM_23
 #define BUTTON2_GPIO GPIO_NUM_22
 
-#define LED_STRIP_GPIO GPIO_NUM_19    
+#define LED_STRIP_GPIO GPIO_NUM_18    
 
 //LED Strip
 #define LED_STRIP_USE_DMA  0
@@ -246,7 +246,7 @@ void input_task(void *pvParameters)
 
 void tcp_client_task(void *pvParameters)
 {
-    char rx_buffer[128];
+    char rx_buffer[256];
 
     while (1) {
         struct sockaddr_in dest_addr;
@@ -408,7 +408,7 @@ void setup()
     };
     gpio_config(&button_io_conf);
 
-
+    
 
     //setup wifi
     // Initialize NVS
@@ -420,14 +420,14 @@ void setup()
 
     wifi_init_sta();
 
-    //Store mac address so ESP32 can be identified
+   //Store mac address so ESP32 can be identified
     uint8_t mac[6];
     esp_wifi_get_mac(WIFI_IF_STA, mac);
     snprintf(esp32_mac_str, sizeof(esp32_mac_str), "%02X:%02X:%02X:%02X:%02X:%02X",
              mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
     ESP_LOGI(TAG, "ESP32 MAC Address: %s", esp32_mac_str);
 
-
+    
 }
 
 
@@ -452,8 +452,12 @@ extern "C" void app_main(void)
 
     inputQueue = xQueueCreate(5, sizeof(LightingCommand));
 
+
     xTaskCreate(input_task, "InputTask", 2048, NULL, 1, NULL);
     xTaskCreate(lighting_handler_task, "LightingTask", 2048, NULL, 2, NULL);
     xTaskCreate(lighting_refresh_task, "LightingRefreshTask", 2048, NULL, 10, NULL);
 
 }
+
+
+
